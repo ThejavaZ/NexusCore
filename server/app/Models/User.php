@@ -68,6 +68,6 @@ class User extends Authenticatable
 
     public function isStaff(): bool
     {
-        return $this->role === UserRole::Staff;
+        return in_array($this->role, [UserRole::Admin, UserRole::Staff], true);
     }
 }
