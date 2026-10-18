@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\Repair;
 use App\Models\RepairStatusHistory;
 use App\Models\User;
@@ -11,13 +12,12 @@ class RepairSeeder extends Seeder
 {
     public function run(): void
     {
-        // Crear usuarios técnicos si no existen
         $technician1 = User::firstOrCreate(
             ['email' => 'tecnico1@nexuscore.dev'],
             [
                 'name' => 'Carlos Técnico',
                 'password' => bcrypt('password'),
-                'role' => 2,
+                'role' => UserRole::Staff,
                 'is_active' => true,
             ]
         );
@@ -27,7 +27,7 @@ class RepairSeeder extends Seeder
             [
                 'name' => 'María Técnico',
                 'password' => bcrypt('password'),
-                'role' => 2,
+                'role' => UserRole::Staff,
                 'is_active' => true,
             ]
         );

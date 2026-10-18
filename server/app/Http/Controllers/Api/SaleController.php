@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\PaymentMethod;
+use App\Enums\StockMovementType;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Models\StockMovement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -46,14 +49,25 @@ class SaleController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
         try {
             $sale = DB::transaction(function () use ($data) {
-                $subtotal = collect($data['items'])->sum(
-                    fn ($item) => $item['quantity'] * $item['unit_price']
-                );
+                $items = collect($data['items'])->map(function ($item) {
+                    $product = Product::lockForUpdate()->findOrFail($item['product_id']);
+
+                    if ($product->stock < $item['quantity']) {
+                        throw new \Exception("Stock insuficiente para {$product->name}");
+                    }
+
+                    return [
+                        'product' => $product,
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $product->price,
+                    ];
+                });
+
+                $subtotal = $items->sum(fn ($i) => $i['quantity'] * $i['unit_price']);
                 $taxAmount = $subtotal * 0.16;
                 $totalAmount = $subtotal + $taxAmount;
 
@@ -66,16 +80,33 @@ class SaleController extends Controller
                     'subtotal' => $subtotal,
                     'tax_amount' => $taxAmount,
                     'total_amount' => $totalAmount,
-                    'payment_method' => $data['payment_method'],
+                    'payment_method' => PaymentMethod::from($data['payment_method']),
+                    'created_by' => auth()->id(),
                 ]);
 
-                foreach ($data['items'] as $item) {
+                foreach ($items as $item) {
+                    $product = $item['product'];
+                    $stockBefore = $product->stock;
+                    $product->stock -= $item['quantity'];
+                    $product->save();
+
                     $sale->details()->create([
-                        'product_id' => $item['product_id'],
-                        'product_name' => Product::find($item['product_id'])->name,
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
                         'unit_price' => $item['unit_price'],
                         'quantity' => $item['quantity'],
                         'total_price' => $item['quantity'] * $item['unit_price'],
+                    ]);
+
+                    StockMovement::create([
+                        'product_id' => $product->id,
+                        'type' => StockMovementType::Sale,
+                        'quantity' => -$item['quantity'],
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $product->stock,
+                        'unit_cost' => $product->cost,
+                        'reference' => $sale->invoice_number,
+                        'created_by' => auth()->id(),
                     ]);
                 }
 

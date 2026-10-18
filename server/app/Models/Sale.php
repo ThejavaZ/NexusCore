@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sale extends Model
@@ -17,11 +19,28 @@ class Sale extends Model
         'tax_amount',
         'total_amount',
         'payment_method',
+        'created_by',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'sale_date' => 'datetime',
+            'subtotal' => 'decimal:2',
+            'tax_amount' => 'decimal:2',
+            'total_amount' => 'decimal:2',
+            'payment_method' => PaymentMethod::class,
+        ];
+    }
 
     public function details(): HasMany
     {
         return $this->hasMany(SaleDetail::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public static function generateInvoiceNumber(): string

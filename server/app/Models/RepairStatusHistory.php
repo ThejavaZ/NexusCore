@@ -2,15 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RepairStatusHistory extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
-
         'repair_id',
         'status_from',
         'status_to',
@@ -19,16 +16,19 @@ class RepairStatusHistory extends Model
         'email_sent',
     ];
 
-    protected $casts = [
-        'email_sent' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'email_sent' => 'boolean',
+        ];
+    }
 
-    public function repair()
+    public function repair(): BelongsTo
     {
         return $this->belongsTo(Repair::class);
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'changed_by');
     }

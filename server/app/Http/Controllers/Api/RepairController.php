@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\RepairStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Repair;
 use App\Services\EmailApiService;
@@ -21,7 +22,7 @@ class RepairController extends Controller
         $query = Repair::with(['customer', 'technician']);
 
         if ($request->filled('status')) {
-            $query->byStatus($request->status);
+            $query->byStatus(RepairStatus::from($request->status));
         }
 
         if ($request->filled('search')) {
@@ -61,11 +62,11 @@ class RepairController extends Controller
                     ...$data,
                     'repair_number' => Repair::generateRepairNumber(),
                     'received_at' => now(),
-                    'status' => 'pending',
+                    'status' => RepairStatus::Pending,
                 ]);
 
                 $repair->statusHistory()->create([
-                    'status_to' => 'pending',
+                    'status_to' => RepairStatus::Pending->value,
                     'notes' => 'Reparación registrada',
                     'changed_by' => auth()->id(),
                 ]);
@@ -127,7 +128,7 @@ class RepairController extends Controller
     public function changeStatus(Request $request, Repair $repair): JsonResponse
     {
         $data = $request->validate([
-            'status' => 'required|in:pending,diagnosed,approved,in_progress,completed,delivered,cancelled',
+            'status' => 'required|in:'.collect(RepairStatus::cases())->pluck('value')->implode(','),
             'notes' => 'nullable|string',
             'final_cost' => 'nullable|numeric|min:0',
         ]);
@@ -136,28 +137,29 @@ class RepairController extends Controller
             DB::beginTransaction();
 
             $oldStatus = $repair->status;
-            $repair->status = $data['status'];
+            $newStatus = RepairStatus::from($data['status']);
+            $repair->status = $newStatus;
 
             if (isset($data['final_cost'])) {
                 $repair->final_cost = $data['final_cost'];
             }
 
-            if ($data['status'] === 'delivered') {
+            if ($newStatus === RepairStatus::Delivered) {
                 $repair->delivered_at = now();
             }
 
             $repair->save();
 
             $repair->statusHistory()->create([
-                'status_from' => $oldStatus,
-                'status_to' => $data['status'],
+                'status_from' => $oldStatus->value,
+                'status_to' => $newStatus->value,
                 'notes' => $data['notes'] ?? null,
                 'changed_by' => auth()->id(),
             ]);
 
             DB::commit();
 
-            $this->emailService->sendStatusChangeEmail($repair, $oldStatus, $data['status']);
+            $this->emailService->sendStatusChangeEmail($repair, $oldStatus->value, $newStatus->value);
             $repair->load(['customer', 'technician', 'statusHistory']);
 
             return response()->json([

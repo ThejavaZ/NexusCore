@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -58,9 +59,8 @@ class AuthController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
-            'role' => 2,
+            'role' => UserRole::Customer,
             'is_active' => true,
-            'status' => 1,
         ]);
 
         $token = $user->createToken('nexuscore-api')->plainTextToken;

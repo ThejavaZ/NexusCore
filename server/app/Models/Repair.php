@@ -2,13 +2,38 @@
 
 namespace App\Models;
 
+use App\Enums\RepairStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property int $id
+ * @property string $repair_number
+ * @property int|null $user_id
+ * @property string $customer_name
+ * @property string|null $customer_email
+ * @property string|null $customer_phone
+ * @property string $device_type
+ * @property string $brand
+ * @property string $model
+ * @property string $serial_number
+ * @property string $issue_description
+ * @property string|null $technician_notes
+ * @property float|null $estimated_cost
+ * @property float|null $final_cost
+ * @property RepairStatus $status
+ * @property Carbon|null $received_at
+ * @property Carbon|null $estimated_delivery
+ * @property Carbon|null $delivered_at
+ * @property int|null $assigned_to
+ * @property bool $customer_notified
+ * @property Carbon|null $last_notification_at
+ */
 class Repair extends Model
 {
     use HasFactory, SoftDeletes;
@@ -36,15 +61,19 @@ class Repair extends Model
         'last_notification_at',
     ];
 
-    protected $casts = [
-        'received_at' => 'date',
-        'estimated_delivery' => 'date',
-        'delivered_at' => 'date',
-        'last_notification_at' => 'datetime',
-        'customer_notified' => 'boolean',
-        'estimated_cost' => 'decimal:2',
-        'final_cost' => 'decimal:2',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'status' => RepairStatus::class,
+            'received_at' => 'date',
+            'estimated_delivery' => 'date',
+            'delivered_at' => 'date',
+            'last_notification_at' => 'datetime',
+            'customer_notified' => 'boolean',
+            'estimated_cost' => 'decimal:2',
+            'final_cost' => 'decimal:2',
+        ];
+    }
 
     public function customer(): BelongsTo
     {
@@ -61,47 +90,23 @@ class Repair extends Model
         return $this->hasMany(RepairStatusHistory::class)->orderBy('created_at', 'desc');
     }
 
-    public function scopeByStatus(Builder $query, string $status): Builder
+    public function scopeByStatus(Builder $query, RepairStatus $status): Builder
     {
         return $query->where('status', $status);
     }
 
     public function scopePending(Builder $query): Builder
     {
-        return $query->where('status', 'pending');
+        return $query->where('status', RepairStatus::Pending);
     }
 
     public function scopeInProgress(Builder $query): Builder
     {
-        return $query->whereIn('status', ['diagnosed', 'approved', 'in_progress']);
-    }
-
-    public function getStatusLabelAttribute(): string
-    {
-        return match ($this->status) {
-            'pending' => 'Pendiente',
-            'diagnosed' => 'Diagnosticado',
-            'approved' => 'Aprobado',
-            'in_progress' => 'En Reparación',
-            'completed' => 'Completado',
-            'delivered' => 'Entregado',
-            'cancelled' => 'Cancelado',
-            default => 'Desconocido',
-        };
-    }
-
-    public function getStatusColorAttribute(): string
-    {
-        return match ($this->status) {
-            'pending' => 'yellow',
-            'diagnosed' => 'blue',
-            'approved' => 'purple',
-            'in_progress' => 'orange',
-            'completed' => 'green',
-            'delivered' => 'gray',
-            'cancelled' => 'red',
-            default => 'gray',
-        };
+        return $query->whereIn('status', [
+            RepairStatus::Diagnosed,
+            RepairStatus::Approved,
+            RepairStatus::InProgress,
+        ]);
     }
 
     public static function generateRepairNumber(): string

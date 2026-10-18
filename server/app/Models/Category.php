@@ -18,12 +18,15 @@ class Category extends Model
         'is_active',
         'created_by',
         'updated_by',
-        'deleted_by',
     ];
 
-    /**
-     * Una categoría tiene muchos productos.
-     */
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+        ];
+    }
+
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);

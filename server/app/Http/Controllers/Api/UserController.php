@@ -22,12 +22,11 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|integer|in:1,2',
+            'role' => 'required|in:admin,staff,customer',
         ]);
 
         $data['password'] = bcrypt($data['password']);
         $data['is_active'] = true;
-        $data['status'] = 1;
 
         $user = User::create($data);
 
@@ -44,13 +43,9 @@ class UserController extends Controller
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => "sometimes|email|max:255|unique:users,email,{$user->id}",
-            'role' => 'sometimes|integer|in:1,2',
+            'role' => 'sometimes|in:admin,staff,customer',
             'is_active' => 'sometimes|boolean',
         ]);
-
-        if (isset($data['password'])) {
-            $data['password'] = bcrypt($data['password']);
-        }
 
         $user->update($data);
 
