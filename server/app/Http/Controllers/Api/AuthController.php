@@ -29,7 +29,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $token = $user->createToken('nexuscore-api')->plainTextToken;
+        $token = $user->createToken('nexuscore-api', [$user->role->value])->plainTextToken;
 
         return response()->json([
             'user' => $user,
@@ -63,7 +63,7 @@ class AuthController extends Controller
             'is_active' => true,
         ]);
 
-        $token = $user->createToken('nexuscore-api')->plainTextToken;
+        $token = $user->createToken('nexuscore-api', [$user->role->value])->plainTextToken;
 
         return response()->json([
             'user' => $user,

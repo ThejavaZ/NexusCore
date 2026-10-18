@@ -5,7 +5,7 @@ use App\Models\User;
 use App\Services\EmailApiService;
 
 beforeEach(function () {
-    $this->user = User::factory()->create();
+    $this->user = User::factory()->staff()->create();
     $this->mock(EmailApiService::class, function ($mock) {
         $mock->shouldReceive('sendRegistrationEmail')->andReturn(['success' => true, 'message' => 'ok']);
         $mock->shouldReceive('sendStatusChangeEmail')->andReturn(['success' => true, 'message' => 'ok']);

@@ -43,22 +43,27 @@ Route::prefix('v1')->group(function () {
         Route::get('auth/me', [AuthController::class, 'me']);
 
         /*
-        | Admin only (role check via Policy, not middleware — deferred to Sprint 03)
+        | Admin only — user management
         */
-        Route::apiResource('users', UserController::class);
-        Route::apiResource('sales', SaleController::class)->only(['index', 'show', 'store']);
-        Route::get('sales/chart', [SaleController::class, 'chart'])->name('sales.chart');
-        Route::apiResource('repairs', RepairController::class);
-        Route::post('repairs/{repair}/change-status', [RepairController::class, 'changeStatus'])
-            ->name('repairs.change-status');
+        Route::middleware('role:admin')->group(function () {
+            Route::apiResource('users', UserController::class);
+        });
 
         /*
-        | Notifications (internal — used by the ERP dashboard)
+        | Staff + Admin — sales, repairs, notifications
         */
-        Route::prefix('notifications')->group(function () {
-            Route::post('welcome', [NotificationController::class, 'sendWelcome']);
-            Route::post('order-confirmation', [NotificationController::class, 'sendOrderConfirmation']);
-            Route::post('invoice', [NotificationController::class, 'sendInvoice']);
+        Route::middleware('role:admin,staff')->group(function () {
+            Route::apiResource('sales', SaleController::class)->only(['index', 'show', 'store']);
+            Route::get('sales/chart', [SaleController::class, 'chart'])->name('sales.chart');
+            Route::apiResource('repairs', RepairController::class);
+            Route::post('repairs/{repair}/change-status', [RepairController::class, 'changeStatus'])
+                ->name('repairs.change-status');
+
+            Route::prefix('notifications')->group(function () {
+                Route::post('welcome', [NotificationController::class, 'sendWelcome']);
+                Route::post('order-confirmation', [NotificationController::class, 'sendOrderConfirmation']);
+                Route::post('invoice', [NotificationController::class, 'sendInvoice']);
+            });
         });
     });
 });
