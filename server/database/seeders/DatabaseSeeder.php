@@ -3,32 +3,25 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-        $this->call([
-            RepairSeeder::class,
-            SaleSeeder::class,
+        User::factory()->admin()->create([
+            'name' => 'Admin',
+            'email' => 'admin@nexuscore.dev',
         ]);
-        User::factory()->create([
-            'name' => 'admin',
-            'email' => 'admin@ariatechshop.com',
-            'password' => Hash::make('password'),
-            'role' => 1,
-            'language' => 1,
-            'status' => 1,
-            'is_active' => 1
+
+        User::factory()->staff()->create([
+            'name' => 'Staff',
+            'email' => 'staff@nexuscore.dev',
+        ]);
+
+        $this->call([
+            ProductSeeder::class,
+            RepairSeeder::class,
         ]);
     }
 }

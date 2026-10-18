@@ -13,11 +13,10 @@ export default function Footer() {
               href="/"
               className="text-xl font-bold text-white tracking-tight"
             >
-              Aria <span className="text-blue-500">TechShop</span>
+              Nexus<span className="text-blue-500">Core</span>
             </Link>
             <p className="mt-4 text-sm leading-6">
-              Hardware de alto rendimiento para entusiastas y profesionales.
-              Elevando tu experiencia digital desde 2024.
+              Plataforma de comercio y operaciones. Laravel + Next.js.
             </p>
           </div>
 
@@ -114,7 +113,7 @@ export default function Footer() {
         {/* Línea divisoria y Copyright */}
         <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs">
-            &copy; {currentYear} Aria TechShop. Todos los derechos reservados.
+            &copy; {currentYear} NexusCore. Todos los derechos reservados.
           </p>
           <div className="flex space-x-6 text-xs">
             <Link href="/privacidad" className="hover:text-white">

@@ -28,7 +28,7 @@ export default function SupportPage({ params }: { params: { slug: string } }) {
             <span className="text-slate-600">{title}</span>.
           </p>
           <p className="text-slate-400 text-sm mt-2 italic">
-            Estará disponible para la versión final de Aria TechShop (ERP).
+            Estará disponible para la versión final de NexusCore (ERP).
           </p>
         </div>
       </div>

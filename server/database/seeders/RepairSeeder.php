@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\Repair;
 use App\Models\RepairStatusHistory;
 use App\Models\User;
@@ -11,25 +12,28 @@ class RepairSeeder extends Seeder
 {
     public function run(): void
     {
-        // Crear usuarios técnicos si no existen
         $technician1 = User::firstOrCreate(
-            ['email' => 'tecnico1@ariatech.com'],
+            ['email' => 'tecnico1@nexuscore.dev'],
             [
                 'name' => 'Carlos Técnico',
                 'password' => bcrypt('password'),
+                'role' => UserRole::Staff,
+                'is_active' => true,
             ]
         );
 
         $technician2 = User::firstOrCreate(
-            ['email' => 'tecnico2@ariatech.com'],
+            ['email' => 'tecnico2@nexuscore.dev'],
             [
                 'name' => 'María Técnico',
                 'password' => bcrypt('password'),
+                'role' => UserRole::Staff,
+                'is_active' => true,
             ]
         );
 
         // Crear reparaciones en diferentes estados
-        
+
         // 5 Pendientes
         Repair::factory(5)->pending()->create()->each(function ($repair) {
             RepairStatusHistory::create([
@@ -118,6 +122,6 @@ class RepairSeeder extends Seeder
             ]);
         });
 
-        $this->command->info('✅ Se crearon ' . Repair::count() . ' reparaciones con su historial');
+        $this->command->info('✅ Se crearon '.Repair::count().' reparaciones con su historial');
     }
 }

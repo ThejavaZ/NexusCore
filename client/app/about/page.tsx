@@ -11,12 +11,11 @@ export default function AboutPage() {
               Nuestra Esencia
             </span>
             <h1 className="mt-4 text-5xl font-extrabold leading-tight">
-              Conoce a Aria TechShop
+              Conoce a NexusCore
             </h1>
             <p className="mt-6 text-lg text-blue-100/80">
-              Somos un equipo apasionado por el hardware de alto rendimiento,
-              dedicados a proveer las herramientas necesarias para que cada
-              setup alcance su máximo potencial.
+              Plataforma full-stack que combina e-commerce y ERP en una sola
+              aplicación. Laravel 12 + Next.js 16 + TypeScript.
             </p>
           </div>
           <div className="hidden md:block bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl aspect-video flex items-center justify-center">

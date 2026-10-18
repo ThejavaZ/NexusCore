@@ -1,209 +1,224 @@
-# AriaTechShop-ERP
+# NexusCore
 
-## Project Description
+> **Plataforma de Comercio y Operaciones** — catálogo, inventario, ventas, reparaciones y gestión administrativa en una sola plataforma.
 
-AriaTechShop-ERP is an Enterprise Resource Planning (ERP) application designed to manage various business processes for Aria Tech Shop. This project serves as a comprehensive example of integrating a modern frontend with a robust backend, providing tools for inventory management, sales tracking, and customer relations.
+[![CI](https://github.com/ThejavaZ/NexusCore/actions/workflows/ci.yml/badge.svg)](https://github.com/ThejavaZ/NexusCore/actions/workflows/ci.yml)
+![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
+![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-87%20Pest%20%2B%2013%20Vitest-fd4a5a?logo=pestphp&logoColor=white)
 
-## Tech Stack
+---
 
-The application is built using a modern full-stack approach:
+## Qué es
+
+NexusCore es una plataforma full-stack que combina un **e-commerce** público con un **ERP interno**:
+
+- **Storefront**: catálogo con búsqueda y filtros, carrito, registro de clientes.
+- **ERP**: dashboard con KPIs, CRUD de productos/categorías, ventas con control de stock, reparaciones con historial de estados, gestión de usuarios.
+- **API**: REST versionada (`/api/v1`), autenticación Bearer con Sanctum, autorización por roles.
+
+> **Historia**: comenzó como proyecto académico multi-equipo (*AriaTechShop-ERP*). La auditoría inicial reveló auth decorativa, dominio duplicado y 0 tests. Este repo documenta el refactor completo bajo dirección técnica única.
+
+---
+
+## Stack
+
+| Capa | Tecnología |
+|------|-----------|
+| **Backend** | Laravel 12 · PHP 8.4 · Sanctum · Pest |
+| **Frontend** | Next.js 16 (App Router) · React 19 · TypeScript strict · Tailwind CSS 4 |
+| **Estado** | Zustand |
+| **Testing** | Pest (87) · Vitest (13) |
+| **CI** | GitHub Actions · Pint · PHPStan (nivel 5) · ESLint |
+| **DB** | MySQL 8 / SQLite (dev + CI) |
+
+---
+
+## Estructura
+
+```
+nexuscore/
+├── server/                  # API Laravel (100% API, sin Blade/Livewire)
+│   ├── app/
+│   │   ├── Enums/           # UserRole, PaymentMethod, RepairStatus, StockMovementType
+│   │   ├── Http/
+│   │   │   ├── Controllers/Api/   # Auth, Product, Category, Sale, Repair, User, Notification
+│   │   │   └── Middleware/        # EnsureUserRole (role:admin,staff)
+│   │   ├── Models/          # User, Product, Category, Sale, SaleDetail, Repair, StockMovement
+│   │   └── Services/        # EmailApiService (Resend)
+│   ├── database/
+│   │   ├── factories/       # User, Product, Category, Sale, Repair
+│   │   ├── migrations/      # 11 migraciones limpias
+│   │   └── seeders/         # DatabaseSeeder, ProductSeeder, RepairSeeder
+│   ├── routes/api.php       # /api/v1/*
+│   └── tests/               # 87 tests Pest (Feature + Unit)
+│
+├── client/                   # Next.js App Router
+│   ├── app/
+│   │   ├── page.tsx          # Home público
+│   │   ├── products/         # Catálogo con búsqueda/filtros
+│   │   ├── login/ register/  # Auth
+│   │   ├── dashboard/        # ERP (layout protegido por rol)
+│   │   └── profile/          # Perfil de usuario
+│   ├── components/           # Header, Footer
+│   ├── hooks/                # useMounted (SSR-safe)
+│   ├── store/                # useAuthStore, useCartStore (Zustand)
+│   ├── utils/                # api.ts (client tipado con Bearer)
+│   └── tests/                # 13 tests Vitest
+│
+└── .github/workflows/ci.yml  # Pipeline: Pint+PHPStan+Pest / ESLint+TS+Vitest+Build
+```
+
+---
+
+## Inicio Rápido
+
+### Requisitos
+- PHP 8.4+ · Composer
+- Node.js 20+ · npm
 
 ### Backend
 
-- **Framework:** Laravel v12 (PHP)
-- **Database:** (Please specify your preferred database, e.g., MySQL, PostgreSQL, SQLite)
-- **Package Management:** Composer
-- **Asset Bundling:** Vite
+```bash
+cd server
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate:fresh --seed
+php artisan serve          # http://localhost:8000
+```
 
 ### Frontend
 
-- **Framework:** React v19 (TypeScript)
-- **Routing:** React Router DOM
-- **Styling:** Tailwind CSS
-- **Build Tool:** Vite
-- **Package Management:** pnpm
-
-## Prerequisites
-
-Before you begin, ensure you have the following installed on your system:
-
-- **PHP:** Version 8.2 or higher
-- **Composer:** Latest stable version
-- **Node.js:** Version 18 or higher (LTS recommended)
-- **pnpm:** (Recommended package manager for client-side dependencies) `npm install -g pnpm`
-- **A database server:** (e.g., MySQL, PostgreSQL, or SQLite)
-
-## Installation Guide
-
-Follow these steps to set up and run the AriaTechShop-ERP application on your local machine.
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/your-username/AriaTechShop-ERP.git
-cd AriaTechShop-ERP
-```
-
-### 2. Server Setup (Laravel Backend)
-
-Navigate into the `server` directory:
-
-```bash
-cd server
-```
-
-a. **Install PHP Dependencies**
-
-    ```bash
-    composer install
-    ```
-
-b. **Environment Configuration**
-
-    Copy the example environment file and generate an application key:
-
-    ```bash
-    cp .env.example .env
-    php artisan key:generate
-    ```
-
-    Open the newly created `.env` file and configure your database connection and other environment variables.
-
-c. **Database Migration**
-
-    Run the database migrations to set up the necessary tables:
-
-    ```bash
-    php artisan migrate
-    ```
-
-d. **Install Node.js Dependencies (for Server Assets)**
-
-    ```bash
-    pnpm install # or npm install
-    ```
-
-e. **Build Server Assets**
-
-    ```bash
-    pnpm run build # or npm run build
-    ```
-
-### 3. Client Setup (React Frontend)
-
-Navigate back to the root directory and then into the `client` directory:
-
-```bash
-cd ..
-cd client
-```
-
-a. **Install Node.js Dependencies**
-
-    ```bash
-    pnpm install
-    ```
-
-b. **Build Client Assets (Optional, for production build)**
-
-    ```bash
-    pnpm run build
-    ```
-
-## Running the Application
-
-### 1. Start the Server (Laravel)
-
-Navigate to the `server` directory and start the Laravel development server. You can use the `composer dev` script to run both the Laravel server and Vite for hot-reloading server-side assets concurrently.
-
-```bash
-cd server
-composer dev
-```
-
-Alternatively, to run them separately:
-
-```bash
-# In one terminal
-php artisan serve
-
-# In another terminal for asset hot-reloading
-pnpm run dev # or npm run dev
-```
-
-### 2. Start the Client (React)
-
-Navigate to the `client` directory and start the React development server:
-
 ```bash
 cd client
-pnpm run dev
+npm install
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+npm run dev                # http://localhost:3000
 ```
 
-The client application should now be accessible in your web browser, typically at `http://localhost:5173` (or similar, as indicated by Vite).
+### Cuentas de prueba (seed)
 
-## Testing
+| Rol | Email | Password |
+|-----|-------|----------|
+| Admin | admin@nexuscore.dev | password |
+| Staff | staff@nexuscore.dev | password |
 
-### Server Tests
+---
 
-To run the Laravel backend tests:
+## API
+
+Base URL: `http://localhost:8000/api/v1`
+
+### Públicos
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/auth/login` | Login → Bearer token |
+| POST | `/auth/register` | Registro de cliente |
+| GET | `/products` | Catálogo (paginado, búsqueda, filtro categoría) |
+| GET | `/products/{slug}` | Detalle de producto |
+| GET | `/categories` | Categorías activas |
+
+### Autenticados (Staff + Admin)
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/auth/me` | Usuario actual |
+| POST | `/auth/logout` | Revocar token |
+| GET | `/admin/products` | Listado completo (con inactivos) |
+| POST | `/admin/products` | Crear producto |
+| PUT | `/admin/products/{id}` | Actualizar producto |
+| DELETE | `/admin/products/{id}` | Desactivar producto |
+| POST | `/admin/products/{id}/adjust-stock` | Ajuste manual de stock |
+| GET | `/sales` | Listado de ventas |
+| POST | `/sales` | Registrar venta (descuenta stock) |
+| GET | `/sales/summary` | KPIs del dashboard |
+| GET | `/sales/chart` | Datos para gráfico |
+| GET | `/repairs` | Listado de reparaciones |
+| POST | `/repairs` | Registrar reparación |
+| POST | `/repairs/{id}/change-status` | Cambiar estado (genera historial) |
+| GET | `/repairs/summary` | Conteo por estado |
+
+### Solo Admin
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET/POST/PUT/DELETE | `/users` | Gestión de usuarios |
+
+### Ejemplo: Login
 
 ```bash
-cd server
-php artisan test
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@nexuscore.dev","password":"password"}'
 ```
 
-
-##  Flujo de Trabajo y Reglas de Git (Git Workflow)
-
-Para garantizar la estabilidad del proyecto en producción, el desarrollo sigue una estrategia basada en **GitHub Flow** respaldada por reglas de protección de ramas y plantillas estandarizadas.
-
----
-
-###  Protección de la Rama Principal (`main`)
-
-La rama `main` se encuentra protegida mediante una **Branch Protection Rule**. 
-
-![Protección de Rama Main](./docs/images/branch-protection.png) <!-- Asegúrate de guardar la captura en tu repo y ajustar la ruta -->
-
-* **Direct Push Bloqueado:** No se permite hacer `git push` directo a `main`.
-* **Pull Request Obligatorio:** Todo cambio debe introducirse mediante un Pull Request (PR).
-* **Aprobación Requerida:** Cada PR requiere como mínimo **1 aprobación (review)** de un integrante del equipo antes de ser fusionado (*Require approvals: 1*).
-* **Descarte por Cambios Nuevos:** Si se suben nuevos commits a una rama de un PR activo, la aprobación previa queda desestimada automáticamente (*Dismiss stale pull request approvals*).
+```json
+{
+  "user": { "id": 1, "name": "Admin", "role": "admin" },
+  "access_token": "1|abc...",
+  "token_type": "Bearer"
+}
+```
 
 ---
 
-###  Convención de Nombres de Ramas
+## Decisiones Técnicas
 
-Las ramas deben crearse siguiendo el estándar definido en nuestros templates según el tipo de contribución:
-
-* `fix/nombre-bug` para correcciones de errores.
-* `feat/nombre-funcionalidad` para nuevas características.
-* `refactor/modulo-nombre` para refactorización de código sin cambio funcional.
-* `test/nombre-prueba` para agregar o mejorar la suite de pruebas.
-* `ci/nombre-pipeline` para ajustes en automatizaciones y workflows de GitHub Actions.
-* `perf/mejora-rendimiento` para optimizaciones.
-* `docs/nombre-documento` para cambios en la documentación.
-
----
-
-###  Estándar para Issues y Pull Requests
-
-El repositorio cuenta con **Issue Templates** estandarizados en `.github/ISSUE_TEMPLATE` y una plantilla obligatoria de **Pull Request** (`PULL_REQUEST_TEMPLATE/pull_request_template.md`).
-
-Al abrir un PR, se desplegará un formulario donde el colaborador debe completar obligatoriamente:
-1. **Resumen del Cambio:** Explicación breve de lo modificado.
-2. **Tipo de Cambio:** Selección con marcadores `[x]` acorde a los prefijos de las ramas (`fix`, `feat`, `refactor`, `test`, `ci`, `perf`, `docs`).
-3. **Vínculo a la Issue:** Enlazar la issue correspondiente (ej. `Closes #12`).
-4. **Evidencias:** Capturas o pruebas de ejecución que respalden el cambio.
+| Decisión | Razón |
+|----------|-------|
+| **API-only** (sin Blade/Livewire) | Frontend independiente, despliegue separado, contratos claros |
+| **Sanctum Bearer** | Simple para SPA/mobile, sin cookies CSRF |
+| **Backed Enums** | Type-safe en PHP + TypeScript, autocompletado, validación limpia |
+| **Middleware de roles** | Un solo punto de control, testeable, legible en rutas |
+| **`DB::transaction` + `lockForUpdate`** | Ventas y ajustes de stock atómicos, sin condiciones de carrera |
+| **Respuestas `success/data`** | Contrato uniforme para el frontend |
+| **SQLite en CI** | Sin dependencia de servicios externos, más rápido |
 
 ---
 
-###  Ciclo de Vida del Desarrollo (Paso a Paso)
+## Quality
 
-1. **Crear una Issue:** Documentar el requerimiento o bug a resolver usando la plantilla correspondiente.
-2. **Crear la rama:** `git checkout -b feat/mi-funcionalidad`
-3. **Realizar Commits:** Mantener commits descriptivos siguiendo el tipo de cambio.
-4. **Subir la rama:** `git push -u origin feat/mi-funcionalidad`
-5. **Abrir Pull Request:** Llenar el formulario automático del PR.
-6. **Code Review & Merge:** Solicitar revisión a un compañero. Una vez aprobada y pasando los tests de CI/CD, realizar el Merge.
+```bash
+# Backend
+cd server
+php artisan test              # 87 tests, 168 assertions
+vendor/bin/pint --test        # Code style
+vendor/bin/phpstan analyse    # Static analysis nivel 5
+
+# Frontend
+cd client
+npm test                      # 13 tests Vitest
+npm run lint                  # ESLint 0 errores
+npm run typecheck             # TypeScript estricto
+npm run build                 # Next.js build
+```
+
+---
+
+## Roadmap
+
+- [x] Sprint 00 — Auditoría
+- [x] Sprint 01 — Limpieza y herramientas de calidad
+- [x] Sprint 02 — Modelo de dominio unificado
+- [x] Sprint 03 — Auth hardening con roles
+- [x] Sprint 04 — Catálogo CRUD completo
+- [x] Sprint 05 — Sales/Repairs endpoints
+- [x] Sprint 06 — Frontend rebranding + dashboard
+- [x] Sprint 07 — Suite de tests completa
+- [x] Sprint 08 — CI/CD pipeline
+- [ ] Sprint 09 — Pulido portfolio *(en curso)*
+- [ ] Dashboard: gráfico de ventas (recharts)
+- [ ] CRUD de productos desde el dashboard
+- [ ] Gestión de reparaciones con cambio de estado
+- [ ] Checkout end-to-end
+
+---
+
+## Licencia
+
+MIT

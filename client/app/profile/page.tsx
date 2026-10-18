@@ -1,34 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, Mail, Shield, Globe, Power, Package } from "lucide-react";
+import { Package, Power, Mail, Shield } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useMounted } from "@/hooks/useMounted";
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null);
   const router = useRouter();
-  const { logout } = useAuthStore();
+  const { user, token, logout } = useAuthStore();
+  const mounted = useMounted();
 
   useEffect(() => {
-    // 1. Extraemos los datos que guardamos en el login
-    const storedUser = localStorage.getItem("aria_user");
-    const token = localStorage.getItem("aria_token");
-
-    if (!storedUser || !token) {
-      // Si no hay sesión, al login de una
+    if (mounted && !token) {
       router.push("/login");
-    } else {
-      setUser(JSON.parse(storedUser));
     }
-  }, [router]);
+  }, [mounted, token, router]);
 
   const handleLogout = () => {
-    logout(); // Esto limpia el estado y el localStorage al mismo tiempo
+    logout();
     router.push("/login");
   };
 
-  if (!user)
+  if (!mounted || !user)
     return <div className="p-10 text-center font-bold">Cargando perfil...</div>;
 
   return (
@@ -42,7 +36,7 @@ export default function ProfilePage() {
           <div className="text-center md:text-left">
             <h1 className="text-3xl font-black text-white">{user.name}</h1>
             <p className="text-blue-400 font-medium">
-              {user.role || "Usuario de Aria"}
+              {user.role === "admin" ? "Administrador" : user.role === "staff" ? "Staff" : "Cliente"}
             </p>
           </div>
           <button
@@ -78,16 +72,7 @@ export default function ProfilePage() {
                 </p>
                 <div className="flex items-center gap-2 text-slate-700 font-medium">
                   <Shield size={16} className="text-blue-500" />{" "}
-                  {user.role || "Vendedor"}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-slate-400 uppercase">
-                  Idioma
-                </p>
-                <div className="flex items-center gap-2 text-slate-700 font-medium">
-                  <Globe size={16} className="text-blue-500" />{" "}
-                  {user.language === "es" ? "Español" : "English"}
+                  {user.role === "admin" ? "Administrador" : user.role === "staff" ? "Staff" : "Cliente"}
                 </div>
               </div>
               <div className="space-y-1">
@@ -119,13 +104,13 @@ export default function ProfilePage() {
         {/* Sidebar de Perfil / Estadísticas */}
         <div className="space-y-6">
           <div className="bg-blue-600 rounded-3xl p-8 text-white shadow-xl shadow-blue-200">
-            <h3 className="text-lg font-black mb-2">Resumen Aria</h3>
+            <h3 className="text-lg font-black mb-2">Resumen NexusCore</h3>
             <p className="text-blue-100 text-sm mb-6 leading-relaxed">
-              Has estado activo desde marzo de 2026. Tu nivel de acceso permite
-              gestionar inventario.
+              Cuenta activa. Tu nivel de acceso determina las funciones
+              disponibles en la plataforma.
             </p>
             <div className="text-3xl font-black italic opacity-50 text-right">
-              #AriaCore
+              #NexusCore
             </div>
           </div>
         </div>

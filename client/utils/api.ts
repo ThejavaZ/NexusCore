@@ -1,28 +1,55 @@
-// lib/api.ts
-export const api = async (endpoint: string, options: RequestInit = {}) => {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const url = `${baseUrl?.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
+interface ApiOptions extends RequestInit {
+  token?: string;
+}
 
+export async function api<T = unknown>(
+  endpoint: string,
+  options: ApiOptions = {},
+): Promise<
+  | { error: true; message: string; errors?: Record<string, string[]> }
+  | { error: false; data: T }
+> {
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const url = `${baseUrl.replace(/\/$/, "")}/api/v1/${endpoint.replace(/^\//, "")}`;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+
+  if (options.token) {
+    headers.Authorization = `Bearer ${options.token}`;
+  }
+
+  try {
     const res = await fetch(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        ...options.headers,
-      },
+      headers,
       cache: "no-store",
     });
 
-    const data = await res.json();
+    const body = await res.json();
 
     if (!res.ok) {
-      return { error: true, errors: data.errors, message: data.message };
+      return {
+        error: true,
+        message: body.message || "Error en la solicitud",
+        errors: body.errors,
+      };
     }
 
-    return { error: false, data: data.data || data };
-  } catch (error) {
-    console.error("Error en API:", error);
+    return { error: false, data: (body.data ?? body) as T };
+  } catch {
     return { error: true, message: "Error de conexión" };
   }
-};
+}
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("nexuscore_token");
+}
+
+export function getAuthHeaders(): Record<string, string> {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}

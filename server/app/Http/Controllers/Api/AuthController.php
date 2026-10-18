@@ -1,85 +1,86 @@
 <?php
 
-namespace App\Http\Controllers\api;
+namespace App\Http\Controllers\Api;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password; // IMPORTANTE: Para la Tarjeta de Seguridad
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            "email" => "required|email|string",
-            "password" => "required|string"
+        $credentials = $request->validate([
+            'email' => 'required|email|string',
+            'password' => 'required|string',
         ]);
 
-        // Buscamos al usuario activo
-        $user = User::where("email", $data["email"])
-                    ->where('status', 1)
-                    ->where('is_active', 1)
-                    ->first();
+        $user = User::where('email', $credentials['email'])
+            ->where('is_active', true)
+            ->first();
 
-        $remember = $request->has('remember');
-
-        if ($user && Hash::check($data['password'], $user->password)) {
-            Auth::login($user, $remember);
-
-            // Retornamos respuesta exitosa para tu API
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             return response()->json([
-                'message' => 'Login exitoso',
-                'user' => $user
-            ], 200);
+                'message' => 'Credenciales incorrectas',
+            ], 401);
         }
 
-        return response()->json(['message' => 'Credenciales incorrectas'], 401);
+        $token = $user->createToken('nexuscore-api', [$user->role->value])->plainTextToken;
+
+        return response()->json([
+            'user' => $user,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+        ]);
     }
 
-    public function register(Request $request)
+    public function register(Request $request): JsonResponse
     {
-        // AQUÍ APLICAS TU TARJETA DE SEGURIDAD (Validación robusta)
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => [
                 'required',
                 'confirmed',
-                Password::min(8)     // Mínimo 8 caracteres
-                    ->letters()      // Debe tener letras
-                    ->mixedCase()   // Mayúsculas y minúsculas
-                    ->numbers()     // Al menos un número
-                    ->symbols()     // Al menos un símbolo
-                    ->uncompromised() // Verifica que no haya sido filtrada en internet
+                Password::min(8)
+                    ->letters()
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols()
+                    ->uncompromised(),
             ],
         ]);
 
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-            'status' => 1,
-            'is_active' => 1
+            'password' => $data['password'],
+            'role' => UserRole::Customer,
+            'is_active' => true,
         ]);
 
-        Auth::login($user);
+        $token = $user->createToken('nexuscore-api', [$user->role->value])->plainTextToken;
 
         return response()->json([
-            'message' => 'Usuario registrado con éxito',
-            'user' => $user
+            'user' => $user,
+            'access_token' => $token,
+            'token_type' => 'Bearer',
         ], 201);
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request): JsonResponse
     {
-        Auth::logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $request->user()->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Sesión cerrada correctamente']);
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        return response()->json(['user' => $request->user()]);
     }
 }

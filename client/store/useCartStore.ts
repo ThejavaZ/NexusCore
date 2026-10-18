@@ -1,18 +1,18 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware"; // Opcional: para que no se borre al recargar
+import { persist } from "zustand/middleware";
 
-interface Product {
+interface CartProduct {
   id: number;
   name: string;
-  price: number;
+  price: string | number;
   stock: number;
-  image?: string; // Agregado por si usas imágenes en tu catálogo
+  image_url?: string | null;
 }
 
 interface CartState {
-  cart: Product[];
+  cart: CartProduct[];
   count: number;
-  addToCart: (product: Product) => void;
+  addToCart: (product: CartProduct) => void;
   removeFromCart: (productId: number) => void;
   clearCart: () => void;
 }
@@ -23,30 +23,22 @@ export const useCartStore = create<CartState>()(
       cart: [],
       count: 0,
 
-      // Ahora sí recibimos el product y actualizamos ambos estados
-      addToCart: (product: Product) =>
+      addToCart: (product) =>
         set((state) => {
           const newCart = [...state.cart, product];
-          return {
-            cart: newCart,
-            count: newCart.length,
-          };
+          return { cart: newCart, count: newCart.length };
         }),
 
-      // Función extra para que tu UI sea funcional
-      removeFromCart: (productId: number) =>
+      removeFromCart: (productId) =>
         set((state) => {
           const newCart = state.cart.filter((p) => p.id !== productId);
-          return {
-            cart: newCart,
-            count: newCart.length,
-          };
+          return { cart: newCart, count: newCart.length };
         }),
 
       clearCart: () => set({ cart: [], count: 0 }),
     }),
     {
-      name: "aria-cart-storage", // Nombre de la cookie/localStorage
+      name: "nexuscore-cart",
     },
   ),
 );

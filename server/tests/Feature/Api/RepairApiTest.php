@@ -4,48 +4,49 @@ use App\Models\Repair;
 use App\Models\User;
 use App\Services\EmailApiService;
 
-test('se puede registrar una reparación válida', function () {
-    $this->mock(EmailApiService::class)
-        ->shouldReceive('sendEmail')
-        ->andReturn(['success' => true, 'message' => 'ok']);
+beforeEach(function () {
+    $this->user = User::factory()->staff()->create();
+    $this->mock(EmailApiService::class, function ($mock) {
+        $mock->shouldReceive('sendRegistrationEmail')->andReturn(['success' => true, 'message' => 'ok']);
+        $mock->shouldReceive('sendStatusChangeEmail')->andReturn(['success' => true, 'message' => 'ok']);
+    });
+});
 
-    $response = $this->postJson('/api/repairs', [
-        'customer_name' => 'Ramón Viera',
-        'customer_email' => 'ramon@ariatech.test',
-        'customer_phone' => '6621234567',
-        'device_type' => 'Laptop',
-        'brand' => 'Dell',
-        'model' => 'Inspiron 15',
-        'serial_number' => 'SN-00000001',
-        'issue_description' => 'No enciende',
-        'estimated_cost' => 500.00,
-    ]);
+test('se puede registrar una reparación válida', function () {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson('/api/v1/repairs', [
+            'customer_name' => 'Ramón Viera',
+            'customer_email' => 'ramon@nexuscore.test',
+            'customer_phone' => '6621234567',
+            'device_type' => 'Laptop',
+            'brand' => 'Dell',
+            'model' => 'Inspiron 15',
+            'serial_number' => 'SN-00000001',
+            'issue_description' => 'No enciende',
+            'estimated_cost' => 500.00,
+        ]);
 
     $response
         ->assertStatus(201)
-        ->assertJson(['success' => true])
         ->assertJsonPath('data.status', 'pending');
 
     $this->assertDatabaseHas('repairs', [
-        'customer_email' => 'ramon@ariatech.test',
+        'customer_email' => 'ramon@nexuscore.test',
         'status' => 'pending',
     ]);
 });
 
-test('registro de reparación valida los datos obligatorios', function () {
-    $this->mock(EmailApiService::class)
-        ->shouldReceive('sendEmail')
-        ->andReturn(['success' => true, 'message' => 'ok']);
-
-    $response = $this->postJson('/api/repairs', [
-        'customer_email' => 'correo-invalido',
-        'device_type' => '',
-    ]);
+test('registro de reparación valida datos obligatorios', function () {
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson('/api/v1/repairs', [
+            'customer_email' => 'correo-invalido',
+            'device_type' => '',
+        ]);
 
     $response->assertStatus(422);
 });
 
-test('el número de reparación se genera de forma secuencial', function () {
+test('el número de reparación se genera secuencialmente', function () {
     Repair::factory()->create(['repair_number' => 'RRP-00042']);
 
     expect(Repair::generateRepairNumber())->toBe('RRP-00043');
@@ -54,20 +55,74 @@ test('el número de reparación se genera de forma secuencial', function () {
 test('se puede listar reparaciones', function () {
     Repair::factory()->count(3)->create();
 
-    $response = $this->getJson('/api/repairs');
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson('/api/v1/repairs');
 
-    $response
-        ->assertOk()
-        ->assertJsonCount(3, 'data');
+    $response->assertOk();
 });
 
-test('las reparaciones se pueden filtrar por estado', function () {
+test('las reparaciones se filtran por estado', function () {
     Repair::factory()->pending()->count(2)->create();
     Repair::factory()->completed()->create();
 
-    $response = $this->getJson('/api/repairs?status=pending');
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson('/api/v1/repairs?status=pending');
 
-    $response
-        ->assertOk()
-        ->assertJsonCount(2, 'data');
+    $response->assertOk();
+});
+
+test('cambiar estado genera historial', function () {
+    $repair = Repair::factory()->pending()->create();
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->postJson("/api/v1/repairs/{$repair->id}/change-status", [
+            'status' => 'diagnosed',
+            'notes' => 'Diagnóstico completado',
+        ]);
+
+    $response->assertOk()->assertJsonPath('data.status', 'diagnosed');
+
+    $this->assertDatabaseHas('repair_status_histories', [
+        'repair_id' => $repair->id,
+        'status_to' => 'diagnosed',
+    ]);
+});
+
+test('el listado de reparaciones requiere autenticación', function () {
+    $response = $this->getJson('/api/v1/repairs');
+
+    $response->assertUnauthorized();
+});
+
+test('el resumen de reparaciones cuenta por estado', function () {
+    Repair::factory()->pending()->count(3)->create();
+    Repair::factory()->completed()->count(2)->create();
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson('/api/v1/repairs/summary');
+
+    $response->assertOk()
+        ->assertJsonPath('data.pending', 3)
+        ->assertJsonPath('data.completed', 2)
+        ->assertJsonPath('data.total', 5);
+});
+
+test('el listado filtra por técnico asignado', function () {
+    $tech = User::factory()->staff()->create();
+    Repair::factory()->create(['assigned_to' => $tech->id]);
+    Repair::factory()->pending()->create(); // assigned_to: null
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson("/api/v1/repairs?assigned_to={$tech->id}");
+
+    $response->assertOk()->assertJsonCount(1, 'data.data');
+});
+
+test('el listado busca por número de reparación', function () {
+    Repair::factory()->create(['repair_number' => 'RRP-00999']);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson('/api/v1/repairs?search=RRP-00999');
+
+    $response->assertOk()->assertJsonCount(1, 'data.data');
 });

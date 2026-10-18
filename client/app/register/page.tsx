@@ -13,16 +13,20 @@ import {
   Loader2,
 } from "lucide-react";
 
+interface RegisterErrors {
+  [key: string]: string[];
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<any>(null);
+  const [errors, setErrors] = useState<RegisterErrors | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    password_confirmation: "", // Cambiado para coincidir con el campo de Laravel
+    password_confirmation: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,20 +40,18 @@ export default function RegisterPage() {
       return;
     }
 
-    // ¡USANDO TU FUNCIÓN CENTRALIZADA!
-    const response = await api("/register", {
+    const response = await api("auth/register", {
       method: "POST",
       body: JSON.stringify(formData),
     });
 
     if (response.error) {
-      setErrors(response.errors); // Aquí Laravel te manda el error de "email ya tomado", etc.
+      setErrors(response.errors || { general: [response.message] });
       setLoading(false);
       return;
     }
 
-    alert("¡Cuenta creada con éxito!");
-    router.push("/login");
+    router.push("/login?registered=1");
   };
 
   return (
@@ -61,18 +63,17 @@ export default function RegisterPage() {
           </div>
           <h1 className="text-3xl font-black text-slate-900">Crea tu cuenta</h1>
           <p className="text-gray-500 mt-2">
-            Únete a la comunidad de Aria TechShop
+            Únete a la comunidad de NexusCore
           </p>
         </div>
 
-        {/* Mostrar errores generales si existen */}
         {errors && (
           <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100">
             <p className="font-bold mb-1">Hay problemas con los datos:</p>
             <ul className="list-disc pl-4">
               {Object.values(errors)
                 .flat()
-                .map((err: any, i) => (
+                .map((err, i) => (
                   <li key={i}>{err}</li>
                 ))}
             </ul>
@@ -80,7 +81,6 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Nombre */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1.5">
               Nombre Completo
@@ -92,7 +92,7 @@ export default function RegisterPage() {
                 required
                 disabled={loading}
                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50"
-                placeholder="Javier SG"
+                placeholder="Tu nombre"
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
@@ -100,7 +100,6 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Email */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1.5">
               Correo Electrónico
@@ -120,7 +119,6 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Passwords */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1.5">

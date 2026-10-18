@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation"; // Para redirigir después del login
+import { useRouter } from "next/navigation";
 import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, type User } from "@/store/useAuthStore";
 import { api } from "@/utils/api";
+
+interface LoginResponse {
+  user: User;
+  access_token: string;
+  token_type: string;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,7 +19,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,31 +26,25 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    // 🚀 Usamos tu nueva utilidad api
-    const response = await api("login", {
+    const response = await api<LoginResponse>("auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
 
     if (response.error) {
-      // Si Laravel devuelve errores de validación (errors), podrías mostrarlos más específicos
-      setError(response.message || "Error al iniciar sesión");
+      setError(response.message);
       setLoading(false);
       return;
     }
 
-    // Si todo salió bien, la data está en response.data
     const { user, access_token } = response.data;
-
-    // 🔐 Actualizamos el estado global (Zustand)
     setAuth(user, access_token);
 
-    // Guardamos en LocalStorage para persistencia
-    localStorage.setItem("aria_token", access_token);
-    localStorage.setItem("aria_user", JSON.stringify(user));
-
-    // Redirigimos
-    router.push("/");
+    if (user.role === "admin" || user.role === "staff") {
+      router.push("/dashboard");
+    } else {
+      router.push("/");
+    }
     router.refresh();
     setLoading(false);
   };
@@ -58,7 +57,7 @@ export default function LoginPage() {
             Bienvenido de nuevo
           </h1>
           <p className="text-gray-500 mt-2">
-            Ingresa a tu cuenta de Aria TechShop
+            Ingresa a tu cuenta de NexusCore
           </p>
         </div>
 
@@ -69,7 +68,6 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
               Correo Electrónico
@@ -88,7 +86,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Password */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
               Contraseña
@@ -104,14 +101,6 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
-            </div>
-            <div className="text-right mt-2">
-              <Link
-                href="#"
-                className="text-sm font-semibold text-blue-600 hover:underline"
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
             </div>
           </div>
 

@@ -1,0 +1,212 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Plus, Pencil, Trash2, PackageSearch } from "lucide-react";
+import { api, getAuthHeaders } from "@/utils/api";
+import { useAuthStore } from "@/store/useAuthStore";
+import {
+  Button, DataTable, Modal, Input, Select, Badge, TableSkeleton,
+} from "@/components/ui";
+
+interface Product {
+  id: number;
+  name: string;
+  sku: string;
+  stock: number;
+  min_stock: number;
+  price: string;
+  cost: string;
+  is_active: boolean;
+  category: { id: number; name: string } | null;
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface Paginated<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  total: number;
+}
+
+const emptyForm = {
+  name: "", sku: "", category_id: "", stock: "0", min_stock: "1",
+  price: "", cost: "", description: "",
+};
+
+export default function DashboardProductsPage() {
+  const { token } = useAuthStore();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    const headers = getAuthHeaders();
+    const params = search ? `?search=${encodeURIComponent(search)}` : "";
+    const timer = setTimeout(() => {
+      api<Paginated<Product>>(`admin/products${params}`, { headers }).then((res) => {
+        if (cancelled) return;
+        if (!res.error) setProducts(res.data.data);
+        setLoading(false);
+      });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [token, search, refreshKey]);
+
+  useEffect(() => {
+    if (!token) return;
+    api<Category[]>("admin/categories", { headers: getAuthHeaders() }).then((r) => {
+      if (!r.error) setCategories(r.data);
+    });
+  }, [token]);
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setError(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (p: Product) => {
+    setEditing(p);
+    setForm({
+      name: p.name, sku: p.sku, category_id: String(p.category?.id ?? ""),
+      stock: String(p.stock), min_stock: String(p.min_stock),
+      price: p.price, cost: p.cost, description: "",
+    });
+    setError(null);
+    setModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    const headers = getAuthHeaders();
+    const body = {
+      ...form,
+      category_id: form.category_id ? Number(form.category_id) : undefined,
+      stock: Number(form.stock),
+      min_stock: Number(form.min_stock),
+      price: Number(form.price),
+      cost: Number(form.cost),
+    };
+
+    const res = editing
+      ? await api(`admin/products/${editing.id}`, { method: "PUT", headers, body: JSON.stringify(body) })
+      : await api("admin/products", { method: "POST", headers, body: JSON.stringify(body) });
+
+    setSaving(false);
+    if (res.error) {
+      setError(res.message);
+      return;
+    }
+    setModalOpen(false);
+    setRefreshKey((k) => k + 1);
+  };
+
+  const handleDelete = async (p: Product) => {
+    if (!confirm(`¿Desactivar "${p.name}"?`)) return;
+    await api(`admin/products/${p.id}`, { method: "DELETE", headers: getAuthHeaders() });
+    setRefreshKey((k) => k + 1);
+  };
+
+  if (!token) return null;
+
+  const lowStock = products.filter((p) => p.stock <= p.min_stock).length;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white">Productos</h1>
+          <p className="text-slate-500">{products.length} en catálogo · {lowStock} con stock bajo</p>
+        </div>
+        <Button onClick={openCreate}><Plus size={16} /> Nuevo producto</Button>
+      </div>
+
+      <div className="relative max-w-sm">
+        <PackageSearch size={16} className="absolute left-3 top-3 text-slate-400" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nombre o SKU..."
+          className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm"
+        />
+      </div>
+
+      {loading ? (
+        <TableSkeleton rows={6} cols={6} />
+      ) : (
+        <DataTable
+          data={products}
+          emptyMessage="No se encontraron productos"
+          columns={[
+            { key: "name", header: "Producto", render: (r) => (
+              <div>
+                <p className="font-bold text-slate-900 dark:text-white">{r.name}</p>
+                <p className="text-xs text-slate-400">{r.sku}</p>
+              </div>
+            )},
+            { key: "category", header: "Categoría", render: (r) => r.category?.name || "—" },
+            { key: "price", header: "Precio", render: (r) => `$${parseFloat(r.price).toLocaleString()}` },
+            { key: "stock", header: "Stock", render: (r) => {
+              const low = r.stock <= r.min_stock;
+              return <Badge color={r.stock === 0 ? "red" : low ? "yellow" : "green"}>{r.stock}</Badge>;
+            }},
+            { key: "is_active", header: "Estado", render: (r) => (
+              <Badge color={r.is_active ? "green" : "slate"}>{r.is_active ? "Activo" : "Inactivo"}</Badge>
+            )},
+            { key: "actions", header: "", render: (r) => (
+              <div className="flex gap-1">
+                <button onClick={() => openEdit(r)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"><Pencil size={15} /></button>
+                <button onClick={() => handleDelete(r)} className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={15} /></button>
+              </div>
+            )},
+          ]}
+        />
+      )}
+
+      {/* Modal */}
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? "Editar producto" : "Nuevo producto"}>
+        <div className="space-y-4">
+          {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 text-sm rounded-xl">{error}</div>}
+          <Input label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          <Input label="SKU" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} required />
+          <Select
+            label="Categoría"
+            value={form.category_id}
+            onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+            options={[{ value: "", label: "Seleccionar..." }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))]}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Precio" type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
+            <Input label="Costo" type="number" step="0.01" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} required />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {!editing && (
+              <Input label="Stock inicial" type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
+            )}
+            <Input label="Stock mínimo" type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} />
+          </div>
+          <div className="flex gap-3 pt-4">
+            <Button variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>Cancelar</Button>
+            <Button className="flex-1" loading={saving} onClick={handleSave}>{editing ? "Guardar" : "Crear"}</Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}

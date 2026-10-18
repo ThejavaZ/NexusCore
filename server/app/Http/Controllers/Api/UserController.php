@@ -1,92 +1,61 @@
 <?php
 
-namespace App\Http\Controllers\api;
+namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): JsonResponse
     {
-        $users = User::where('is_active', 1)->get();
+        $users = User::where('is_active', true)->paginate(15);
 
-        if($users){
-            $list = [];
-
-            foreach($users as $user){
-                $object = [
-                    'message' => [
-                        'code' => 202,
-                        'message' => 'All users'
-                    ],
-                    'id' => $user->id,
-                ];
-
-                array_push($list, $object);
-            }
-            return response()->json($list);
-        }
-
-        else{
-            $object = [
-                'code' => 404,
-                'message' => "No info"
-            ];
-
-            return response()->json($object);
-        }
+        return response()->json($users);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function store(Request $request): JsonResponse
     {
-        //
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
+            'role' => 'required|in:admin,staff,customer',
+        ]);
+
+        $data['password'] = bcrypt($data['password']);
+        $data['is_active'] = true;
+
+        $user = User::create($data);
+
+        return response()->json(['user' => $user], 201);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function show(User $user): JsonResponse
     {
-        //
+        return response()->json(['user' => $user]);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function update(Request $request, User $user): JsonResponse
     {
-        //
+        $data = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => "sometimes|email|max:255|unique:users,email,{$user->id}",
+            'role' => 'sometimes|in:admin,staff,customer',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        $user->update($data);
+
+        return response()->json(['user' => $user]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function destroy(User $user): JsonResponse
     {
-        //
-    }
+        $user->delete();
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return response()->json(['message' => 'Usuario eliminado exitosamente']);
     }
 }

@@ -1,27 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/store/useCartStore";
-import { ShoppingCart, User, Search, Menu, X } from "lucide-react";
+import { ShoppingCart, User, Search, Menu, X, LayoutDashboard } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useMounted } from "@/hooks/useMounted";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Header() {
-  const { user } = useAuthStore(); // Zustand ya sabe si hay usuario
+  const { user } = useAuthStore();
   const cartCount = useCartStore((state) => state.count);
-
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  // 1. Solución al "Hydration Error" de Next.js
-  // Esperamos a que el componente se monte en el cliente antes de mostrar datos del Store
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useMounted();
 
   const toggleMenu = () => setIsOpen(!isOpen);
+  const isStaff = user?.role === "admin" || user?.role === "staff";
 
-  if (!mounted) return null; // Evita el parpadeo de hidratación
+  if (!mounted) return null;
 
   return (
     <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
@@ -33,12 +29,12 @@ export default function Header() {
               href="/"
               className="text-xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
             >
-              Aria TechShop
+              NexusCore
             </Link>
           </div>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden md:flex items-center space-x-8">
             <Link
               href="/"
               className="text-gray-700 hover:text-blue-600 font-medium"
@@ -57,10 +53,24 @@ export default function Header() {
             >
               Nosotros
             </Link>
+            {isStaff && (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-1.5 text-gray-700 hover:text-blue-600 font-medium"
+              >
+                <LayoutDashboard size={18} />
+                Dashboard
+              </Link>
+            )}
           </nav>
 
           {/* Acciones */}
           <div className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
+            <button className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 transition">
+              <Search size={22} />
+            </button>
+
             <Link
               href="/cart"
               className="relative p-2 text-gray-600 hover:text-blue-600 transition"
@@ -73,19 +83,29 @@ export default function Header() {
               )}
             </Link>
 
-            {/* --- LÓGICA DE USUARIO SIMPLIFICADA --- */}
             {user ? (
-              <Link
-                href="/profile"
-                className="flex items-center gap-2 p-2 text-blue-600 bg-blue-50 rounded-xl transition border-l pl-4 ml-2 hover:bg-blue-100"
-              >
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md">
-                  {user.name.charAt(0)}
-                </div>
-                <span className="hidden lg:inline text-sm font-bold">
-                  {user.name.split(" ")[0]}
-                </span>
-              </Link>
+              <div className="flex items-center gap-2">
+                {isStaff && (
+                  <Link
+                    href="/dashboard"
+                    className="hidden md:flex items-center gap-1.5 p-2 text-emerald-600 bg-emerald-50 rounded-xl transition hover:bg-emerald-100"
+                  >
+                    <LayoutDashboard size={18} />
+                    <span className="text-sm font-bold">ERP</span>
+                  </Link>
+                )}
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 p-2 text-blue-600 bg-blue-50 rounded-xl transition hover:bg-blue-100"
+                >
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md">
+                    {user.name.charAt(0)}
+                  </div>
+                  <span className="hidden lg:inline text-sm font-bold">
+                    {user.name.split(" ")[0]}
+                  </span>
+                </Link>
+              </div>
             ) : (
               <Link
                 href="/login"
@@ -108,7 +128,7 @@ export default function Header() {
         </div>
       </div>
 
-      {/* MENÚ MÓVIL ADAPTADO */}
+      {/* Mobile Menu */}
       <div
         className={`md:hidden overflow-hidden transition-all duration-300 bg-white ${isOpen ? "max-h-96 border-t shadow-lg" : "max-h-0"}`}
       >
@@ -127,7 +147,6 @@ export default function Header() {
           >
             Productos
           </Link>
-
           <Link
             href="/about"
             onClick={toggleMenu}
@@ -135,26 +154,19 @@ export default function Header() {
           >
             Nosotros
           </Link>
-
+          {isStaff && (
+            <Link
+              href="/dashboard"
+              onClick={toggleMenu}
+              className="block px-3 py-3 rounded-md font-medium text-emerald-600"
+            >
+              Dashboard ERP
+            </Link>
+          )}
           <div className="pt-4 border-t border-gray-100">
-            {user ? (
-              <Link
-                href="/profile"
-                className="flex items-center gap-2 p-2 text-blue-600 bg-blue-50 rounded-xl transition border-l pl-4 ml-2 hover:bg-blue-100"
-              >
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-md shadow-blue-200">
-                  {user.name.charAt(0)}
-                </div>
-                <span className="hidden lg:inline text-sm font-bold">
-                  {user.name.split(" ")[0]}
-                </span>
-              </Link>
-            ) : (
-              <Link href="/login" className="...">
-                <User size={22} />
-                <span className="hidden lg:inline text-sm font-semibold">
-                  Entrar
-                </span>
+            {!user && (
+              <Link href="/login" onClick={toggleMenu} className="block px-3 py-3 font-semibold text-blue-600">
+                Iniciar sesión
               </Link>
             )}
           </div>
