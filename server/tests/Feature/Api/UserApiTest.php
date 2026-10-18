@@ -22,7 +22,9 @@ test('un admin lista usuarios activos', function () {
         ->getJson('/api/v1/users');
 
     // admin + 2 users = 3 (inactive excluded)
-    $response->assertOk()->assertJsonCount(3, 'data');
+    $response->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonCount(3, 'data.data');
 });
 
 test('un admin crea un usuario', function () {
@@ -34,7 +36,7 @@ test('un admin crea un usuario', function () {
             'role' => 'staff',
         ]);
 
-    $response->assertStatus(201)->assertJsonPath('user.email', 'nuevo@nexuscore.test');
+    $response->assertStatus(201)->assertJsonPath('data.email', 'nuevo@nexuscore.test');
     $this->assertDatabaseHas('users', ['email' => 'nuevo@nexuscore.test', 'role' => 'staff']);
 });
 
@@ -70,7 +72,7 @@ test('un admin ve el detalle de un usuario', function () {
     $response = $this->actingAs($this->admin, 'sanctum')
         ->getJson("/api/v1/users/{$user->id}");
 
-    $response->assertOk()->assertJsonPath('user.id', $user->id);
+    $response->assertOk()->assertJsonPath('data.id', $user->id);
 });
 
 test('un admin actualiza un usuario', function () {
@@ -82,7 +84,7 @@ test('un admin actualiza un usuario', function () {
             'role' => 'staff',
         ]);
 
-    $response->assertOk()->assertJsonPath('user.name', 'Actualizado');
+    $response->assertOk()->assertJsonPath('data.name', 'Actualizado');
     $this->assertDatabaseHas('users', ['id' => $user->id, 'role' => 'staff']);
 });
 
@@ -102,6 +104,14 @@ test('un admin elimina un usuario', function () {
     $response = $this->actingAs($this->admin, 'sanctum')
         ->deleteJson("/api/v1/users/{$user->id}");
 
-    $response->assertOk();
+    $response->assertOk()->assertJsonPath('success', true);
     $this->assertDatabaseMissing('users', ['id' => $user->id]);
+});
+
+test('no se puede eliminar la propia cuenta', function () {
+    $response = $this->actingAs($this->admin, 'sanctum')
+        ->deleteJson("/api/v1/users/{$this->admin->id}");
+
+    $response->assertStatus(422);
+    $this->assertDatabaseHas('users', ['id' => $this->admin->id]);
 });

@@ -9,11 +9,16 @@ use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $users = User::where('is_active', true)->paginate(15);
+        $users = User::where('is_active', true)
+            ->orderBy('name')
+            ->paginate($request->integer('per_page', 15));
 
-        return response()->json($users);
+        return response()->json([
+            'success' => true,
+            'data' => $users,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -30,12 +35,19 @@ class UserController extends Controller
 
         $user = User::create($data);
 
-        return response()->json(['user' => $user], 201);
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuario creado exitosamente',
+            'data' => $user,
+        ], 201);
     }
 
     public function show(User $user): JsonResponse
     {
-        return response()->json(['user' => $user]);
+        return response()->json([
+            'success' => true,
+            'data' => $user,
+        ]);
     }
 
     public function update(Request $request, User $user): JsonResponse
@@ -49,13 +61,27 @@ class UserController extends Controller
 
         $user->update($data);
 
-        return response()->json(['user' => $user]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuario actualizado exitosamente',
+            'data' => $user->fresh(),
+        ]);
     }
 
     public function destroy(User $user): JsonResponse
     {
+        if ($user->id === auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No puedes eliminar tu propia cuenta',
+            ], 422);
+        }
+
         $user->delete();
 
-        return response()->json(['message' => 'Usuario eliminado exitosamente']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuario eliminado exitosamente',
+        ]);
     }
 }

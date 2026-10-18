@@ -8,7 +8,9 @@ import {
   ShoppingCart,
   Wrench,
   Package,
+  Boxes,
   Users,
+  FolderTree,
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -19,9 +21,13 @@ const NAV_ITEMS = [
   { label: "Ventas", href: "/dashboard/sales", icon: ShoppingCart },
   { label: "Reparaciones", href: "/dashboard/repairs", icon: Wrench },
   { label: "Productos", href: "/dashboard/products", icon: Package },
+  { label: "Stock", href: "/dashboard/stock", icon: Boxes },
 ];
 
-const ADMIN_ONLY = [{ label: "Usuarios", href: "/dashboard/users", icon: Users }];
+const ADMIN_ONLY = [
+  { label: "Usuarios", href: "/dashboard/users", icon: Users },
+  { label: "Categorías", href: "/dashboard/categories", icon: FolderTree },
+];
 
 export default function DashboardLayout({
   children,
@@ -63,11 +69,11 @@ export default function DashboardLayout({
     <div className="flex min-h-[80vh] gap-6">
       {/* Sidebar */}
       <aside className="w-64 shrink-0">
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 sticky top-24">
-          <div className="mb-6 pb-4 border-b border-slate-100">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sticky top-24">
+          <div className="mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
             <p className="text-xs font-bold text-slate-400 uppercase">Panel ERP</p>
-            <p className="font-bold text-slate-800">{user.name}</p>
-            <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-blue-100 text-blue-700">
+            <p className="font-bold text-slate-800 dark:text-white">{user.name}</p>
+            <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400">
               {user.role}
             </span>
           </div>
@@ -77,7 +83,7 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition"
               >
                 <item.icon size={18} />
                 {item.label}
@@ -87,7 +93,7 @@ export default function DashboardLayout({
 
           <button
             onClick={handleLogout}
-            className="mt-6 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition"
+            className="mt-6 w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
           >
             <LogOut size={18} />
             Cerrar sesión

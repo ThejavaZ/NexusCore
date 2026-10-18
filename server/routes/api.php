@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\RepairController;
 use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\Api\StockMovementController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -62,6 +63,7 @@ Route::prefix('v1')->group(function () {
             Route::put('admin/products/{product}', [ProductController::class, 'update']);
             Route::delete('admin/products/{product}', [ProductController::class, 'destroy']);
             Route::post('admin/products/{product}/adjust-stock', [ProductController::class, 'adjustStock']);
+            Route::get('admin/stock-movements', [StockMovementController::class, 'index']);
 
             Route::get('admin/categories', [CategoryController::class, 'adminIndex']);
             Route::post('admin/categories', [CategoryController::class, 'store']);

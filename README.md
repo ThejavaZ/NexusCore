@@ -134,6 +134,11 @@ Base URL: `http://localhost:8000/api/v1`
 | PUT | `/admin/products/{id}` | Actualizar producto |
 | DELETE | `/admin/products/{id}` | Desactivar producto |
 | POST | `/admin/products/{id}/adjust-stock` | Ajuste manual de stock |
+| GET | `/admin/stock-movements` | Historial de movimientos de stock |
+| GET | `/admin/categories` | Listado de categorías (con conteo) |
+| POST | `/admin/categories` | Crear categoría |
+| PUT | `/admin/categories/{id}` | Actualizar categoría |
+| DELETE | `/admin/categories/{id}` | Eliminar categoría |
 | GET | `/sales` | Listado de ventas |
 | POST | `/sales` | Registrar venta (descuenta stock) |
 | GET | `/sales/summary` | KPIs del dashboard |

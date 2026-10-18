@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, PackageSearch } from "lucide-react";
-import { api, getAuthHeaders } from "@/utils/api";
+import { api, getAuthHeaders, type Paginated } from "@/utils/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
   Button, DataTable, Modal, Input, Select, Badge, TableSkeleton,
 } from "@/components/ui";
+import { toast } from "sonner";
 
 interface Product {
   id: number;
@@ -23,13 +24,6 @@ interface Product {
 interface Category {
   id: number;
   name: string;
-}
-
-interface Paginated<T> {
-  data: T[];
-  current_page: number;
-  last_page: number;
-  total: number;
 }
 
 const emptyForm = {
@@ -50,21 +44,35 @@ export default function DashboardProductsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [refreshKey, setRefreshKey] = useState(0);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
     const headers = getAuthHeaders();
-    const params = search ? `?search=${encodeURIComponent(search)}` : "";
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    params.set("page", String(page));
     const timer = setTimeout(() => {
-      api<Paginated<Product>>(`admin/products${params}`, { headers }).then((res) => {
+      api<Paginated<Product>>(`admin/products?${params}`, { headers }).then((res) => {
         if (cancelled) return;
-        if (!res.error) setProducts(res.data.data);
+        if (!res.error) {
+          setProducts(res.data.data);
+          setLastPage(res.data.last_page);
+          setTotal(res.data.total);
+        }
         setLoading(false);
       });
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [token, search, refreshKey]);
+  }, [token, search, page, refreshKey]);
+
+  const changeSearch = (value: string) => {
+    setPage(1);
+    setSearch(value);
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -113,13 +121,19 @@ export default function DashboardProductsPage() {
       setError(res.message);
       return;
     }
+    toast.success(editing ? "Producto actualizado" : "Producto creado");
     setModalOpen(false);
     setRefreshKey((k) => k + 1);
   };
 
   const handleDelete = async (p: Product) => {
     if (!confirm(`¿Desactivar "${p.name}"?`)) return;
-    await api(`admin/products/${p.id}`, { method: "DELETE", headers: getAuthHeaders() });
+    const res = await api(`admin/products/${p.id}`, { method: "DELETE", headers: getAuthHeaders() });
+    if (res.error) {
+      toast.error(res.message);
+      return;
+    }
+    toast.success("Producto desactivado");
     setRefreshKey((k) => k + 1);
   };
 
@@ -132,7 +146,7 @@ export default function DashboardProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white">Productos</h1>
-          <p className="text-slate-500">{products.length} en catálogo · {lowStock} con stock bajo</p>
+          <p className="text-slate-500">{total} en catálogo · {lowStock} con stock bajo en esta página</p>
         </div>
         <Button onClick={openCreate}><Plus size={16} /> Nuevo producto</Button>
       </div>
@@ -141,7 +155,7 @@ export default function DashboardProductsPage() {
         <PackageSearch size={16} className="absolute left-3 top-3 text-slate-400" />
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => changeSearch(e.target.value)}
           placeholder="Buscar por nombre o SKU..."
           className="w-full pl-9 pr-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm"
         />
@@ -153,6 +167,7 @@ export default function DashboardProductsPage() {
         <DataTable
           data={products}
           emptyMessage="No se encontraron productos"
+          pagination={{ page, lastPage, total, onPageChange: setPage }}
           columns={[
             { key: "name", header: "Producto", render: (r) => (
               <div>

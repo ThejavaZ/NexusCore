@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { Wrench, Clock, CheckCircle2, Package, Loader2 } from "lucide-react";
-import { api, getAuthHeaders } from "@/utils/api";
+import { api, getAuthHeaders, type Paginated } from "@/utils/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
   Button, DataTable, Modal, Select, Textarea, StatusBadge, TableSkeleton, StatCard,
 } from "@/components/ui";
+import { toast } from "sonner";
 
 interface Repair {
   id: number;
@@ -37,8 +38,6 @@ interface RepairSummary {
   total: number;
 }
 
-interface Paginated<T> { data: T[] }
-
 const STATUSES = [
   { value: "pending", label: "Pendiente" },
   { value: "diagnosed", label: "Diagnosticado" },
@@ -59,39 +58,58 @@ export default function DashboardRepairsPage() {
   const [newStatus, setNewStatus] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
     const headers = getAuthHeaders();
-    const params = filter ? `?status=${filter}` : "";
+    const params = new URLSearchParams();
+    if (filter) params.set("status", filter);
+    params.set("page", String(page));
     Promise.all([
-      api<Paginated<Repair>>(`repairs${params}`, { headers }),
+      api<Paginated<Repair>>(`repairs?${params}`, { headers }),
       api<RepairSummary>("repairs/summary", { headers }),
     ]).then(([repairsRes, summaryRes]) => {
       if (cancelled) return;
-      if (!repairsRes.error) setRepairs(repairsRes.data.data);
+      if (!repairsRes.error) {
+        setRepairs(repairsRes.data.data);
+        setLastPage(repairsRes.data.last_page);
+        setTotal(repairsRes.data.total);
+      }
       if (!summaryRes.error) setSummary(summaryRes.data);
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [token, filter]);
+  }, [token, filter, page, refreshKey]);
 
   const handleStatusChange = async () => {
     if (!statusModal || !newStatus) return;
     setSaving(true);
-    await api(`repairs/${statusModal.id}/change-status`, {
+    const res = await api(`repairs/${statusModal.id}/change-status`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ status: newStatus, notes: notes || undefined }),
     });
     setSaving(false);
+    if (res.error) {
+      toast.error(res.message);
+      return;
+    }
+    toast.success("Estado actualizado");
     setStatusModal(null);
     setNewStatus("");
     setNotes("");
     setDetail(null);
-    // Trigger reload by toggling filter state
-    setFilter((f) => f);
+    setRefreshKey((k) => k + 1);
+  };
+
+  const changeFilter = (value: string) => {
+    setPage(1);
+    setFilter(value);
   };
 
   if (!token) return null;
@@ -115,9 +133,9 @@ export default function DashboardRepairsPage() {
 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap">
-        <Button size="sm" variant={filter === "" ? "primary" : "secondary"} onClick={() => setFilter("")}>Todas</Button>
+        <Button size="sm" variant={filter === "" ? "primary" : "secondary"} onClick={() => changeFilter("")}>Todas</Button>
         {STATUSES.map((s) => (
-          <Button key={s.value} size="sm" variant={filter === s.value ? "primary" : "secondary"} onClick={() => setFilter(s.value)}>
+          <Button key={s.value} size="sm" variant={filter === s.value ? "primary" : "secondary"} onClick={() => changeFilter(s.value)}>
             {s.label}
           </Button>
         ))}
@@ -130,6 +148,7 @@ export default function DashboardRepairsPage() {
           data={repairs}
           emptyMessage="No hay reparaciones"
           onRowClick={(r) => setDetail(r)}
+          pagination={{ page, lastPage, total, onPageChange: setPage }}
           columns={[
             { key: "repair_number", header: "Folio", render: (r) => <span className="font-bold text-blue-600">{r.repair_number}</span> },
             { key: "customer_name", header: "Cliente" },

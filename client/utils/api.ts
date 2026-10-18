@@ -2,6 +2,14 @@ interface ApiOptions extends RequestInit {
   token?: string;
 }
 
+export interface Paginated<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  total: number;
+  per_page: number;
+}
+
 export async function api<T = unknown>(
   endpoint: string,
   options: ApiOptions = {},
@@ -13,9 +21,13 @@ export async function api<T = unknown>(
   const url = `${baseUrl.replace(/\/$/, "")}/api/v1/${endpoint.replace(/^\//, "")}`;
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     Accept: "application/json",
   };
+
+  // Content-Type solo con body: en GET fuerza un preflight CORS innecesario
+  if (options.body) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (options.token) {
     headers.Authorization = `Bearer ${options.token}`;

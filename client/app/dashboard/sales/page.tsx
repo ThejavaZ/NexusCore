@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Eye, DollarSign, TrendingUp, ShoppingCart } from "lucide-react";
-import { api, getAuthHeaders } from "@/utils/api";
+import { api, getAuthHeaders, type Paginated } from "@/utils/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
   DataTable, Modal, StatusBadge, TableSkeleton, StatCard,
@@ -29,11 +29,6 @@ interface Sale {
   details: SaleDetail[];
 }
 
-interface Paginated<T> {
-  data: T[];
-  total: number;
-}
-
 interface Summary {
   today_sales: number;
   today_revenue: number;
@@ -47,22 +42,29 @@ export default function DashboardSalesPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<Sale | null>(null);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
     const headers = getAuthHeaders();
     Promise.all([
-      api<Paginated<Sale>>("sales", { headers }),
+      api<Paginated<Sale>>(`sales?page=${page}`, { headers }),
       api<Summary>("sales/summary", { headers }),
     ]).then(([salesRes, summaryRes]) => {
       if (cancelled) return;
-      if (!salesRes.error) setSales(salesRes.data.data);
+      if (!salesRes.error) {
+        setSales(salesRes.data.data);
+        setLastPage(salesRes.data.last_page);
+        setTotal(salesRes.data.total);
+      }
       if (!summaryRes.error) setSummary(summaryRes.data);
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, page]);
 
   if (!token) return null;
 
@@ -89,6 +91,7 @@ export default function DashboardSalesPage() {
           data={sales}
           emptyMessage="No hay ventas registradas"
           onRowClick={(r) => setDetail(r)}
+          pagination={{ page, lastPage, total, onPageChange: setPage }}
           columns={[
             { key: "invoice_number", header: "Factura", render: (r) => <span className="font-bold text-blue-600">{r.invoice_number}</span> },
             { key: "sale_date", header: "Fecha", render: (r) => new Date(r.sale_date).toLocaleDateString("es-MX") },
