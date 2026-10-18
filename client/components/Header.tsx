@@ -6,6 +6,7 @@ import { useCartStore } from "@/store/useCartStore";
 import { ShoppingCart, User, Search, Menu, X, LayoutDashboard } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useMounted } from "@/hooks/useMounted";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Header() {
   const { user } = useAuthStore();
@@ -65,7 +66,8 @@ export default function Header() {
 
           {/* Acciones */}
           <div className="flex items-center gap-2 sm:gap-4">
-            <button className="p-2 text-gray-600 hover:text-blue-600 transition">
+            <ThemeToggle />
+            <button className="p-2 text-gray-600 dark:text-gray-400 hover:text-blue-600 transition">
               <Search size={22} />
             </button>
 
