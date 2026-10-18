@@ -3,26 +3,26 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-test('register de usuario retorna 201 con el usuario', function () {
-    $response = $this->postJson('/api/register', [
+test('register retorna 201 con user y access_token', function () {
+    $response = $this->postJson('/api/v1/auth/register', [
         'name' => 'Cliente Prueba',
-        'email' => 'cliente@ariatech.test',
+        'email' => 'cliente@nexuscore.test',
         'password' => 'Str0ng!Pass',
         'password_confirmation' => 'Str0ng!Pass',
     ]);
 
     $response
         ->assertStatus(201)
-        ->assertJsonFragment(['message' => 'Usuario registrado con éxito'])
-        ->assertJsonPath('user.email', 'cliente@ariatech.test');
+        ->assertJsonPath('user.email', 'cliente@nexuscore.test')
+        ->assertJsonStructure(['user', 'access_token', 'token_type']);
 
-    $this->assertDatabaseHas('users', ['email' => 'cliente@ariatech.test']);
+    $this->assertDatabaseHas('users', ['email' => 'cliente@nexuscore.test']);
 });
 
-test('register rechaza password debil', function () {
-    $response = $this->postJson('/api/register', [
+test('register rechaza password débil', function () {
+    $response = $this->postJson('/api/v1/auth/register', [
         'name' => 'Cliente Prueba',
-        'email' => 'cliente2@ariatech.test',
+        'email' => 'cliente2@nexuscore.test',
         'password' => '123',
         'password_confirmation' => '123',
     ]);
@@ -30,19 +30,21 @@ test('register rechaza password debil', function () {
     $response->assertStatus(422);
 });
 
-test('login retorna 200 con credenciales válidas', function () {
+test('login retorna 200 con access_token', function () {
     $user = User::factory()->create([
         'password' => Hash::make('Str0ng!Pass'),
+        'is_active' => true,
     ]);
 
-    $response = $this->postJson('/api/login', [
+    $response = $this->postJson('/api/v1/auth/login', [
         'email' => $user->email,
         'password' => 'Str0ng!Pass',
     ]);
 
     $response
         ->assertStatus(200)
-        ->assertJsonFragment(['message' => 'Login exitoso']);
+        ->assertJsonPath('user.email', $user->email)
+        ->assertJsonStructure(['user', 'access_token', 'token_type']);
 });
 
 test('login rechaza credenciales incorrectas', function () {
@@ -50,7 +52,7 @@ test('login rechaza credenciales incorrectas', function () {
         'password' => Hash::make('Str0ng!Pass'),
     ]);
 
-    $response = $this->postJson('/api/login', [
+    $response = $this->postJson('/api/v1/auth/login', [
         'email' => $user->email,
         'password' => 'wrong-password',
     ]);
@@ -58,12 +60,36 @@ test('login rechaza credenciales incorrectas', function () {
     $response->assertStatus(401)->assertJson(['message' => 'Credenciales incorrectas']);
 });
 
-test('un usuario genera token de acceso Sanctum en texto plano', function () {
+test('login genera token Sanctum en texto plano', function () {
+    $user = User::factory()->create([
+        'password' => Hash::make('Str0ng!Pass'),
+        'is_active' => true,
+    ]);
+
+    $response = $this->postJson('/api/v1/auth/login', [
+        'email' => $user->email,
+        'password' => 'Str0ng!Pass',
+    ]);
+
+    $token = $response->json('access_token');
+    expect($token)->toBeString()->not->toBeEmpty();
+    $this->assertDatabaseCount('personal_access_tokens', 1);
+});
+
+test('logout revoca el token actual', function () {
     $user = User::factory()->create();
 
-    $token = $user->createToken('auth_token')->plainTextToken;
+    $response = $this->actingAs($user, 'sanctum')
+        ->postJson('/api/v1/auth/logout');
 
-    expect($token)->toBeString()->not->toBeEmpty();
+    $response->assertOk();
+});
 
-    $this->assertDatabaseCount('personal_access_tokens', 1);
+test('auth/me retorna el usuario autenticado', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->getJson('/api/v1/auth/me');
+
+    $response->assertOk()->assertJsonPath('user.email', $user->email);
 });

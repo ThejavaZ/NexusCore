@@ -13,27 +13,27 @@ return new class extends Migration
     {
         Schema::create('sales', function (Blueprint $table) {
 
-        $table->id();
+            $table->id();
 
-        $table->string('invoice_number')->unique();
-        $table->dateTime('sale_date');
+            $table->string('invoice_number')->unique();
+            $table->dateTime('sale_date');
 
-        // Customer data
-        $table->string('customer_name');
-        $table->string('customer_phone')->nullable();
-        $table->string('customer_email')->nullable();
+            // Customer data
+            $table->string('customer_name');
+            $table->string('customer_phone')->nullable();
+            $table->string('customer_email')->nullable();
 
-        // Totals
-        $table->decimal('subtotal', 10, 2);
-        $table->decimal('tax_amount', 10, 2)->default(0);
-        $table->decimal('total_amount', 10, 2);
+            // Totals
+            $table->decimal('subtotal', 10, 2);
+            $table->decimal('tax_amount', 10, 2)->default(0);
+            $table->decimal('total_amount', 10, 2);
 
-        // Payment
-        $table->enum('payment_method', ['cash', 'card', 'transfer', 'other']);
+            // Payment
+            $table->enum('payment_method', ['cash', 'card', 'transfer', 'other']);
 
-        $table->timestamps();
-    });
-}
+            $table->timestamps();
+        });
+    }
 
     /**
      * Reverse the migrations.

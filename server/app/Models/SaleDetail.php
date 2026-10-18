@@ -12,7 +12,7 @@ class SaleDetail extends Model
         'product_name',
         'unit_price',
         'quantity',
-        'total_price'
+        'total_price',
     ];
 
     public function sale()

@@ -15,13 +15,12 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie','login','register'],
+    'paths' => ['api/*'],
 
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'https://ariatechshop.netlify.app',
-        'http://localhost:3000'
+        env('FRONTEND_URL', 'http://localhost:3000'),
     ],
     'allowed_origins_patterns' => [],
 
@@ -31,7 +30,6 @@ return [
 
     'max_age' => 0,
 
-    'supports_credentials' => true,
-
+    'supports_credentials' => false,
 
 ];

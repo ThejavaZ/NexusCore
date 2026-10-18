@@ -10,7 +10,7 @@ class RepairStatusHistory extends Model
     use HasFactory;
 
     protected $fillable = [
-        
+
         'repair_id',
         'status_from',
         'status_to',

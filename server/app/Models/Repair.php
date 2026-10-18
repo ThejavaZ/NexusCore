@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Repair extends Model
@@ -43,42 +46,39 @@ class Repair extends Model
         'final_cost' => 'decimal:2',
     ];
 
-    // Relaciones
-    public function customer()
+    public function customer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    public function technician()
+    public function technician(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
-    public function statusHistory()
+    public function statusHistory(): HasMany
     {
         return $this->hasMany(RepairStatusHistory::class)->orderBy('created_at', 'desc');
     }
 
-    // Scopes
-    public function scopeByStatus($query, $status)
+    public function scopeByStatus(Builder $query, string $status): Builder
     {
         return $query->where('status', $status);
     }
 
-    public function scopePending($query)
+    public function scopePending(Builder $query): Builder
     {
         return $query->where('status', 'pending');
     }
 
-    public function scopeInProgress($query)
+    public function scopeInProgress(Builder $query): Builder
     {
         return $query->whereIn('status', ['diagnosed', 'approved', 'in_progress']);
     }
 
-    // Helpers
-    public function getStatusLabelAttribute()
+    public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'pending' => 'Pendiente',
             'diagnosed' => 'Diagnosticado',
             'approved' => 'Aprobado',
@@ -90,9 +90,9 @@ class Repair extends Model
         };
     }
 
-    public function getStatusColorAttribute()
+    public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'pending' => 'yellow',
             'diagnosed' => 'blue',
             'approved' => 'purple',
@@ -104,10 +104,11 @@ class Repair extends Model
         };
     }
 
-    public static function generateRepairNumber()
+    public static function generateRepairNumber(): string
     {
         $lastRepair = static::withTrashed()->orderBy('id', 'desc')->first();
         $number = $lastRepair ? intval(substr($lastRepair->repair_number, 4)) + 1 : 1;
-        return 'RRP-' . str_pad($number, 5, '0', STR_PAD_LEFT);
+
+        return 'RRP-'.str_pad((string) $number, 5, '0', STR_PAD_LEFT);
     }
 }

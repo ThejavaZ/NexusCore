@@ -15,12 +15,12 @@ class RepairFactory extends Factory
         $deviceTypes = ['Laptop', 'Desktop', 'Tablet', 'Smartphone', 'Monitor', 'Impresora'];
         $brands = ['Dell', 'HP', 'Lenovo', 'Apple', 'Samsung', 'Asus', 'Acer'];
         $statuses = ['pending', 'diagnosed', 'approved', 'in_progress', 'completed', 'delivered'];
-        
+
         $status = $this->faker->randomElement($statuses);
         $receivedAt = $this->faker->dateTimeBetween('-30 days', 'now');
-        
+
         return [
-            'repair_number' => 'RRP-' . str_pad($this->faker->unique()->numberBetween(1, 9999), 5, '0', STR_PAD_LEFT),
+            'repair_number' => 'RRP-'.str_pad($this->faker->unique()->numberBetween(1, 9999), 5, '0', STR_PAD_LEFT),
             'user_id' => null,
             'customer_name' => $this->faker->name(),
             'customer_email' => $this->faker->email(),
@@ -39,7 +39,7 @@ class RepairFactory extends Factory
                 'Virus detectado',
                 'Problema de audio',
                 'Teclado dañado',
-                'Puerto USB no funciona'
+                'Puerto USB no funciona',
             ]),
             'technician_notes' => $status !== 'pending' ? $this->faker->sentence(10) : null,
             'estimated_cost' => $this->faker->randomFloat(2, 50, 500),

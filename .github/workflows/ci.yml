@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "refactor/**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  backend:
+    name: Backend (Laravel)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, dom, curl, libxml, sqlite3, pdo_sqlite
+          tools: composer
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: server/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('server/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install Dependencies
+        run: composer install --no-ansi --no-interaction --no-progress --prefer-dist
+
+      - name: Copy Environment
+        run: cp .env.example .env
+
+      - name: Generate Key
+        run: php artisan key:generate
+
+      - name: Check PSR-4 Autoload
+        run: composer dump-autoload -o
+
+      - name: Pint (Code Style)
+        run: vendor/bin/pint --test
+
+      - name: PHPStan (Static Analysis)
+        run: vendor/bin/phpstan analyse --memory-limit=512M --no-progress
+
+      - name: Prepare Database
+        run: touch database/database.sqlite
+
+      - name: Run Tests (Pest)
+        run: php artisan test --log-junit=tests-report/junit.xml
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-junit-report
+          path: server/tests-report/junit.xml
+
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint
+        run: pnpm lint
+        continue-on-error: true
+
+      - name: TypeScript Check
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build

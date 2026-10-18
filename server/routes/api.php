@@ -1,61 +1,64 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-
-// --- TUS CONTROLADORES (CORREGIDOS) ---
-use App\Http\Controllers\Api\UserController as ApiUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\ProductController;
-
-// --- CONTROLADORES DE TUS COMPAÑEROS ---
-use App\Http\Controllers\SaleController;
 use App\Http\Controllers\Api\NotificationController;
-use App\Http\Controllers\RepairController;
+use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\RepairController;
+use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\Api\UserController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Rutas Públicas (Auth y Catálogo)
+| NexusCore API v1
 |--------------------------------------------------------------------------
+|
+| All endpoints are prefixed with /api/v1. Authentication uses Sanctum
+| Bearer tokens. Public routes (catalog, auth) are listed first.
+|
 */
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
 
-Route::get('/products', [ProductController::class, 'index']);
-Route::get('/products/{slug}', [ProductController::class, 'show']);
-Route::get('/categories', [CategoryController::class, 'index']);
+Route::prefix('v1')->group(function () {
 
-/*
-|--------------------------------------------------------------------------
-| Rutas Protegidas (Auth:Sanctum)
-|--------------------------------------------------------------------------
-*/
-Route::middleware('auth:sanctum')->group(function(){
-    Route::resource('users', ApiUserController::class);
-    Route::apiResource('sales', SaleController::class);
-});
+    /*
+    | Public: Authentication
+    */
+    Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 
-/*
-|--------------------------------------------------------------------------
-| Ventas, Notificaciones y Reparaciones (Compañeros)
-|--------------------------------------------------------------------------
-*/
-Route::get('/sales/chart', [SaleController::class, 'salesChart']);
+    /*
+    | Public: Catalog (storefront)
+    */
+    Route::get('products', [ProductController::class, 'index']);
+    Route::get('products/{slug}', [ProductController::class, 'show']);
+    Route::get('categories', [CategoryController::class, 'index']);
 
-Route::prefix('notifications')->group(function () {
-    Route::post('/send-email', [NotificationController::class, 'sendEmail']);
-    Route::post('/send-welcome', [NotificationController::class, 'sendWelcome']);
-    Route::post('/send-order-confirmation', [NotificationController::class, 'sendOrderConfirmation']);
-    Route::post('/send-invoice', [NotificationController::class, 'sendInvoice']);
-});
+    /*
+    | Protected: authenticated via Sanctum Bearer token
+    */
+    Route::middleware('auth:sanctum')->group(function () {
 
-Route::prefix('repairs')->group(function () {
-    Route::get('/', [RepairController::class, 'index']);
-    Route::post('/', [RepairController::class, 'store']);
-    Route::get('/{id}', [RepairController::class, 'show']);
-    Route::put('/{id}', [RepairController::class, 'update']);
-    Route::delete('/{id}', [RepairController::class, 'destroy']);
-    Route::post('/{id}/change-status', [RepairController::class, 'changeStatus']);
-    Route::post('/{id}/send-survey', [RepairController::class, 'sendSurvey']);
+        Route::post('auth/logout', [AuthController::class, 'logout']);
+        Route::get('auth/me', [AuthController::class, 'me']);
+
+        /*
+        | Admin only (role check via Policy, not middleware — deferred to Sprint 03)
+        */
+        Route::apiResource('users', UserController::class);
+        Route::apiResource('sales', SaleController::class)->only(['index', 'show', 'store']);
+        Route::get('sales/chart', [SaleController::class, 'chart'])->name('sales.chart');
+        Route::apiResource('repairs', RepairController::class);
+        Route::post('repairs/{repair}/change-status', [RepairController::class, 'changeStatus'])
+            ->name('repairs.change-status');
+
+        /*
+        | Notifications (internal — used by the ERP dashboard)
+        */
+        Route::prefix('notifications')->group(function () {
+            Route::post('welcome', [NotificationController::class, 'sendWelcome']);
+            Route::post('order-confirmation', [NotificationController::class, 'sendOrderConfirmation']);
+            Route::post('invoice', [NotificationController::class, 'sendInvoice']);
+        });
+    });
 });

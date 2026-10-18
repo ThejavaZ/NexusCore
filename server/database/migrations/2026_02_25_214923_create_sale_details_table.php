@@ -13,26 +13,26 @@ return new class extends Migration
     {
         Schema::create('sale_details', function (Blueprint $table) {
 
-        $table->id();
+            $table->id();
 
-        $table->foreignId('sale_id')
-              ->constrained('sales')
-              ->onDelete('cascade');
+            $table->foreignId('sale_id')
+                ->constrained('sales')
+                ->onDelete('cascade');
 
-        $table->foreignId('inventory_id')
-              ->constrained('inventories')
-              ->onDelete('restrict');
+            $table->foreignId('inventory_id')
+                ->constrained('inventories')
+                ->onDelete('restrict');
 
-        // Snapshot from inventories table
-        $table->string('product_name');
-        $table->decimal('unit_price', 10, 2);
+            // Snapshot from inventories table
+            $table->string('product_name');
+            $table->decimal('unit_price', 10, 2);
 
-        $table->unsignedInteger('quantity');
-        $table->decimal('total_price', 10, 2);
+            $table->unsignedInteger('quantity');
+            $table->decimal('total_price', 10, 2);
 
-        $table->timestamps();
-    });
-}
+            $table->timestamps();
+        });
+    }
 
     /**
      * Reverse the migrations.

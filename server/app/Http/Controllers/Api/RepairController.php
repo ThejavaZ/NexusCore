@@ -1,0 +1,176 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Repair;
+use App\Services\EmailApiService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class RepairController extends Controller
+{
+    public function __construct(
+        protected EmailApiService $emailService,
+    ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $query = Repair::with(['customer', 'technician']);
+
+        if ($request->filled('status')) {
+            $query->byStatus($request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('repair_number', 'like', "%{$search}%")
+                    ->orWhere('customer_name', 'like', "%{$search}%")
+                    ->orWhere('customer_email', 'like', "%{$search}%")
+                    ->orWhere('device_type', 'like', "%{$search}%");
+            });
+        }
+
+        $repairs = $query->latest()->paginate(15);
+
+        return response()->json($repairs);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'customer_name' => 'required|string|max:255',
+            'customer_email' => 'required|email',
+            'customer_phone' => 'required|string|max:20',
+            'device_type' => 'required|string|max:100',
+            'brand' => 'nullable|string|max:100',
+            'model' => 'nullable|string|max:100',
+            'serial_number' => 'nullable|string|max:100',
+            'issue_description' => 'required|string',
+            'estimated_cost' => 'nullable|numeric|min:0',
+            'estimated_delivery' => 'nullable|date',
+            'assigned_to' => 'nullable|exists:users,id',
+        ]);
+
+        try {
+            $repair = DB::transaction(function () use ($data) {
+                $repair = Repair::create([
+                    ...$data,
+                    'repair_number' => Repair::generateRepairNumber(),
+                    'received_at' => now(),
+                    'status' => 'pending',
+                ]);
+
+                $repair->statusHistory()->create([
+                    'status_to' => 'pending',
+                    'notes' => 'Reparación registrada',
+                    'changed_by' => auth()->id(),
+                ]);
+
+                return $repair;
+            });
+
+            $repair->load(['customer', 'technician']);
+            $this->emailService->sendRegistrationEmail($repair);
+
+            return response()->json([
+                'message' => 'Reparación registrada exitosamente',
+                'repair' => $repair,
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Error al crear reparación', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'message' => 'Error al crear la reparación',
+            ], 500);
+        }
+    }
+
+    public function show(Repair $repair): JsonResponse
+    {
+        $repair->load(['customer', 'technician', 'statusHistory.user']);
+
+        return response()->json(['repair' => $repair]);
+    }
+
+    public function update(Request $request, Repair $repair): JsonResponse
+    {
+        $data = $request->validate([
+            'customer_name' => 'sometimes|string|max:255',
+            'customer_email' => 'sometimes|email',
+            'customer_phone' => 'sometimes|string|max:20',
+            'technician_notes' => 'nullable|string',
+            'estimated_cost' => 'nullable|numeric|min:0',
+            'final_cost' => 'nullable|numeric|min:0',
+            'estimated_delivery' => 'nullable|date',
+            'assigned_to' => 'nullable|exists:users,id',
+        ]);
+
+        $repair->update($data);
+
+        return response()->json([
+            'message' => 'Reparación actualizada exitosamente',
+            'repair' => $repair->load(['customer', 'technician']),
+        ]);
+    }
+
+    public function destroy(Repair $repair): JsonResponse
+    {
+        $repair->delete();
+
+        return response()->json(['message' => 'Reparación eliminada exitosamente']);
+    }
+
+    public function changeStatus(Request $request, Repair $repair): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => 'required|in:pending,diagnosed,approved,in_progress,completed,delivered,cancelled',
+            'notes' => 'nullable|string',
+            'final_cost' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $oldStatus = $repair->status;
+            $repair->status = $data['status'];
+
+            if (isset($data['final_cost'])) {
+                $repair->final_cost = $data['final_cost'];
+            }
+
+            if ($data['status'] === 'delivered') {
+                $repair->delivered_at = now();
+            }
+
+            $repair->save();
+
+            $repair->statusHistory()->create([
+                'status_from' => $oldStatus,
+                'status_to' => $data['status'],
+                'notes' => $data['notes'] ?? null,
+                'changed_by' => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            $this->emailService->sendStatusChangeEmail($repair, $oldStatus, $data['status']);
+            $repair->load(['customer', 'technician', 'statusHistory']);
+
+            return response()->json([
+                'message' => 'Estado actualizado exitosamente',
+                'repair' => $repair,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al cambiar estado de reparación', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'message' => 'Error al cambiar el estado',
+            ], 500);
+        }
+    }
+}

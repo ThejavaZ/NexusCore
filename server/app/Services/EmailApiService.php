@@ -3,22 +3,25 @@
 namespace App\Services;
 
 use App\Models\Repair;
+use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class EmailApiService
 {
     private $apiKey;
+
     private $fromEmail;
+
     private $fromName;
+
     private $baseUrl;
 
     public function __construct()
     {
         $this->apiKey = config('services.resend.api_key');
         $this->fromEmail = config('services.resend.from_email');
-        $this->fromName = config('services.resend.from_name', 'AriaTech Shop');
+        $this->fromName = config('services.resend.from_name', 'NexusCore');
         $this->baseUrl = 'https://api.resend.com';
     }
 
@@ -41,11 +44,15 @@ class EmailApiService
                 'html' => $htmlContent,
             ];
 
-            if ($textContent) $payload['text'] = $textContent;
-            if (!empty($attachments)) $payload['attachments'] = $this->formatAttachments($attachments);
+            if ($textContent) {
+                $payload['text'] = $textContent;
+            }
+            if (! empty($attachments)) {
+                $payload['attachments'] = $this->formatAttachments($attachments);
+            }
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Authorization' => 'Bearer '.$this->apiKey,
                 'Content-Type' => 'application/json',
             ])->post("{$this->baseUrl}/emails", $payload);
 
@@ -53,21 +60,22 @@ class EmailApiService
                 return [
                     'success' => true,
                     'message' => 'Correo enviado exitosamente',
-                    'email_id' => $response->json()['id'] ?? null
+                    'email_id' => $response->json()['id'] ?? null,
                 ];
             }
 
             return [
                 'success' => false,
                 'message' => 'Error al enviar el correo',
-                'error' => $response->json()
+                'error' => $response->json(),
             ];
 
         } catch (Exception $e) {
-            Log::error('Error enviando correo: ' . $e->getMessage());
+            Log::error('Error enviando correo: '.$e->getMessage());
+
             return [
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ];
         }
     }
@@ -82,7 +90,7 @@ class EmailApiService
     public function sendRegistrationEmail(Repair $repair): array
     {
         $estimatedCost = $repair->estimated_cost
-            ? '$' . number_format($repair->estimated_cost, 2)
+            ? '$'.number_format((float) $repair->estimated_cost, 2)
             : 'Por determinar';
 
         $estimatedDelivery = $repair->estimated_delivery
@@ -166,20 +174,20 @@ class EmailApiService
     public function sendStatusChangeEmail(Repair $repair, string $previousStatus, string $newStatus): array
     {
         $statusConfig = [
-            'pending'     => ['label' => 'Pendiente',     'color' => '#D97706', 'bg' => '#FFFBEB', 'icon' => '⏳'],
-            'diagnosed'   => ['label' => 'Diagnosticada', 'color' => '#2563EB', 'bg' => '#EFF6FF', 'icon' => '🔍'],
-            'approved'    => ['label' => 'Aprobada',      'color' => '#7C3AED', 'bg' => '#F5F3FF', 'icon' => '✅'],
+            'pending' => ['label' => 'Pendiente',     'color' => '#D97706', 'bg' => '#FFFBEB', 'icon' => '⏳'],
+            'diagnosed' => ['label' => 'Diagnosticada', 'color' => '#2563EB', 'bg' => '#EFF6FF', 'icon' => '🔍'],
+            'approved' => ['label' => 'Aprobada',      'color' => '#7C3AED', 'bg' => '#F5F3FF', 'icon' => '✅'],
             'in_progress' => ['label' => 'En Progreso',   'color' => '#EA580C', 'bg' => '#FFF7ED', 'icon' => '🔧'],
-            'completed'   => ['label' => 'Completada',    'color' => '#16A34A', 'bg' => '#F0FDF4', 'icon' => '🎉'],
-            'delivered'   => ['label' => 'Entregada',     'color' => '#374151', 'bg' => '#F9FAFB', 'icon' => '📦'],
-            'cancelled'   => ['label' => 'Cancelada',     'color' => '#DC2626', 'bg' => '#FEF2F2', 'icon' => '❌'],
+            'completed' => ['label' => 'Completada',    'color' => '#16A34A', 'bg' => '#F0FDF4', 'icon' => '🎉'],
+            'delivered' => ['label' => 'Entregada',     'color' => '#374151', 'bg' => '#F9FAFB', 'icon' => '📦'],
+            'cancelled' => ['label' => 'Cancelada',     'color' => '#DC2626', 'bg' => '#FEF2F2', 'icon' => '❌'],
         ];
 
-        $prev    = $statusConfig[$previousStatus] ?? ['label' => $previousStatus, 'color' => '#6B7280', 'bg' => '#F9FAFB', 'icon' => '•'];
-        $current = $statusConfig[$newStatus]      ?? ['label' => $newStatus,      'color' => '#6B7280', 'bg' => '#F9FAFB', 'icon' => '•'];
+        $prev = $statusConfig[$previousStatus] ?? ['label' => $previousStatus, 'color' => '#6B7280', 'bg' => '#F9FAFB', 'icon' => '•'];
+        $current = $statusConfig[$newStatus] ?? ['label' => $newStatus,      'color' => '#6B7280', 'bg' => '#F9FAFB', 'icon' => '•'];
 
         $finalCostRow = $repair->final_cost
-            ? "<tr><td style='padding:10px 0; color:#9CA3AF; font-size:13px;'>Costo final</td><td style='padding:10px 0; color:#111827; font-size:14px; font-weight:700;'>\$" . number_format($repair->final_cost, 2) . "</td></tr>"
+            ? "<tr><td style='padding:10px 0; color:#9CA3AF; font-size:13px;'>Costo final</td><td style='padding:10px 0; color:#111827; font-size:14px; font-weight:700;'>\$".number_format((float) $repair->final_cost, 2).'</td></tr>'
             : '';
 
         $html = "
@@ -264,18 +272,18 @@ class EmailApiService
         <body style='font-family: Arial, sans-serif;'>
             <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
                 <div style='background: #4F46E5; color: white; padding: 30px; text-align: center;'>
-                    <h1>¡Bienvenido a AriaTech Shop!</h1>
+                    <h1>¡Bienvenido a NexusCore!</h1>
                 </div>
                 <div style='padding: 30px; background: #f9fafb;'>
                     <h2>Hola {$userName},</h2>
                     <p>Gracias por registrarte. Estamos emocionados de tenerte con nosotros.</p>
-                    <a href='" . config('app.url') . "' style='display: inline-block; padding: 12px 30px; background: #4F46E5; color: white; text-decoration: none; border-radius: 5px;'>Explorar tienda</a>
+                    <a href='".config('app.url')."' style='display: inline-block; padding: 12px 30px; background: #4F46E5; color: white; text-decoration: none; border-radius: 5px;'>Explorar tienda</a>
                 </div>
             </div>
         </body>
         </html>";
 
-        return $this->sendEmail($to, '¡Bienvenido a AriaTech Shop!', $html);
+        return $this->sendEmail($to, '¡Bienvenido a NexusCore!', $html);
     }
 
     public function sendOrderConfirmation(string $to, array $orderData): array
@@ -319,7 +327,7 @@ class EmailApiService
     {
         $attachments = [];
         if ($pdfPath && file_exists($pdfPath)) {
-            $attachments[] = ['path' => $pdfPath, 'filename' => 'factura_' . $invoiceData['invoice_number'] . '.pdf'];
+            $attachments[] = ['path' => $pdfPath, 'filename' => 'factura_'.$invoiceData['invoice_number'].'.pdf'];
         }
 
         $html = "
@@ -357,6 +365,7 @@ class EmailApiService
                 ];
             }
         }
+
         return $formatted;
     }
 }

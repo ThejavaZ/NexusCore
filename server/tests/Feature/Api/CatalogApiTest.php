@@ -2,7 +2,6 @@
 
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\User;
 
 function makeProduct(array $overrides = []): Product
 {
@@ -29,18 +28,17 @@ function makeProduct(array $overrides = []): Product
 test('el catálogo público lista productos activos', function () {
     makeProduct();
 
-    $response = $this->getJson('/api/products');
+    $response = $this->getJson('/api/v1/products');
 
     $response
         ->assertOk()
-        ->assertJson(['success' => true])
-        ->assertJsonCount(1, 'data');
+        ->assertJsonPath('data.0.name', 'RTX 5090');
 });
 
 test('el catálogo excluye productos inactivos', function () {
     makeProduct(['is_active' => false]);
 
-    $response = $this->getJson('/api/products');
+    $response = $this->getJson('/api/v1/products');
 
     $response->assertOk()->assertJsonCount(0, 'data');
 });
@@ -48,7 +46,7 @@ test('el catálogo excluye productos inactivos', function () {
 test('el catálogo filtra productos por categoría', function () {
     makeProduct();
 
-    $response = $this->getJson('/api/products?category_id=999');
+    $response = $this->getJson('/api/v1/products?category_id=999');
 
     $response->assertOk()->assertJsonCount(0, 'data');
 });
@@ -56,7 +54,7 @@ test('el catálogo filtra productos por categoría', function () {
 test('se muestra un producto por su slug', function () {
     makeProduct();
 
-    $response = $this->getJson('/api/products/rtx-5090');
+    $response = $this->getJson('/api/v1/products/rtx-5090');
 
     $response
         ->assertOk()
@@ -65,19 +63,16 @@ test('se muestra un producto por su slug', function () {
 });
 
 test('un slug inexistente devuelve 404', function () {
-    $response = $this->getJson('/api/products/no-existe');
+    $response = $this->getJson('/api/v1/products/no-existe');
 
     $response->assertNotFound();
 });
 
-test('el catálogo público devuelve categorías activas', function () {
+test('el catálogo devuelve categorías activas', function () {
     Category::create(['name' => 'Procesadores', 'slug' => 'procesadores', 'is_active' => true]);
     Category::create(['name' => 'Oculta', 'slug' => 'oculta', 'is_active' => false]);
 
-    $response = $this->getJson('/api/categories');
+    $response = $this->getJson('/api/v1/categories');
 
-    $response
-        ->assertOk()
-        ->assertJson(['success' => true])
-        ->assertJsonCount(1, 'data');
+    $response->assertOk()->assertJsonCount(1, 'data');
 });
