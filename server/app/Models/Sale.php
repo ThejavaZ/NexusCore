@@ -25,6 +25,8 @@ use Illuminate\Support\Facades\DB;
  * @property PaymentMethod $payment_method
  * @property SaleStatus $status
  * @property string|null $stripe_session_id
+ * @property int|null $coupon_id
+ * @property string $discount_amount
  * @property int|null $created_by
  */
 class Sale extends Model
@@ -43,6 +45,8 @@ class Sale extends Model
         'payment_method',
         'status',
         'stripe_session_id',
+        'coupon_id',
+        'discount_amount',
         'created_by',
     ];
 
@@ -55,6 +59,7 @@ class Sale extends Model
             'total_amount' => 'decimal:2',
             'payment_method' => PaymentMethod::class,
             'status' => SaleStatus::class,
+            'discount_amount' => 'decimal:2',
         ];
     }
 
@@ -72,6 +77,14 @@ class Sale extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * @return BelongsTo<Coupon, $this>
+     */
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public static function generateInvoiceNumber(): string

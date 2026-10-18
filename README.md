@@ -123,6 +123,7 @@ Base URL: `http://localhost:8000/api/v1`
 | GET | `/products/{slug}` | Detalle de producto |
 | GET | `/categories` | Categorías activas |
 | POST | `/orders` | Checkout como invitado (throttle 10/min) |
+| GET | `/coupons/validate` | Previsualizar descuento de un cupón |
 | GET | `/orders/by-session/{session_id}` | Consulta pública de pedido por sesión de pago |
 | POST | `/payments/fake/confirm` | Confirmar pago simulado (solo `PAYMENT_DRIVER=fake`) |
 | POST | `/stripe/webhook` | Webhook de Stripe (firma verificada) |
@@ -167,6 +168,7 @@ Base URL: `http://localhost:8000/api/v1`
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | GET/POST/PUT/DELETE | `/users` | Gestión de usuarios |
+| GET/POST/PUT/DELETE | `/admin/coupons` | Gestión de cupones |
 
 ### Ejemplo: Login
 

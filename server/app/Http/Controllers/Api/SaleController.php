@@ -6,6 +6,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\SaleStatus;
 use App\Enums\StockMovementType;
 use App\Http\Controllers\Controller;
+use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\StockMovement;
@@ -119,6 +120,7 @@ class SaleController extends Controller
             'customer_phone' => 'nullable|string|max:20',
             'customer_email' => 'nullable|email',
             'payment_method' => 'required|in:cash,card,transfer',
+            'coupon_code' => 'nullable|string|max:40',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -141,8 +143,30 @@ class SaleController extends Controller
                 });
 
                 $subtotal = $items->sum(fn ($i) => $i['quantity'] * $i['unit_price']);
-                $taxAmount = $subtotal * 0.16;
-                $totalAmount = $subtotal + $taxAmount;
+
+                $coupon = null;
+                $discount = 0.0;
+                if (! empty($data['coupon_code'])) {
+                    $coupon = Coupon::where('code', strtoupper(trim($data['coupon_code'])))
+                        ->where('is_active', true)
+                        ->first();
+
+                    if (! $coupon) {
+                        throw new \RuntimeException('Cupón inválido');
+                    }
+
+                    $reason = CouponController::unusableReason($coupon, (float) $subtotal);
+                    if ($reason !== null) {
+                        throw new \RuntimeException($reason);
+                    }
+
+                    $discount = $coupon->computeDiscount((float) $subtotal);
+                    $coupon->increment('used_count');
+                }
+
+                $taxable = $subtotal - $discount;
+                $taxAmount = $taxable * 0.16;
+                $totalAmount = $taxable + $taxAmount;
 
                 $sale = Sale::create([
                     'invoice_number' => Sale::generateInvoiceNumber(),
@@ -151,12 +175,14 @@ class SaleController extends Controller
                     'customer_phone' => $data['customer_phone'] ?? null,
                     'customer_email' => $data['customer_email'] ?? null,
                     'subtotal' => $subtotal,
+                    'discount_amount' => $discount,
                     'tax_amount' => $taxAmount,
                     'total_amount' => $totalAmount,
                     'payment_method' => PaymentMethod::from($data['payment_method']),
                     'status' => $data['payment_method'] === 'card'
                         ? SaleStatus::PendingPayment
                         : SaleStatus::Paid,
+                    'coupon_id' => $coupon?->id,
                     'created_by' => auth()->id(),
                 ]);
 

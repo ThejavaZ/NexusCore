@@ -18,6 +18,7 @@ export interface Order {
   customer_name: string;
   customer_email: string | null;
   subtotal: string;
+  discount_amount?: string;
   tax_amount: string;
   total_amount: string;
   payment_method: string;
@@ -113,6 +114,12 @@ export function OrderInvoice({
               <span className="text-slate-500">Subtotal</span>
               <span>${parseFloat(order.subtotal).toLocaleString()}</span>
             </div>
+            {parseFloat(order.discount_amount ?? "0") > 0 && (
+              <div className="flex justify-between text-emerald-600">
+                <span>Descuento</span>
+                <span>−${parseFloat(order.discount_amount ?? "0").toLocaleString()}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-slate-500">IVA (16%)</span>
               <span>${parseFloat(order.tax_amount).toLocaleString()}</span>

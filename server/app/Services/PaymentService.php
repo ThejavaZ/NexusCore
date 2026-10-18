@@ -65,16 +65,16 @@ class PaymentService
                 'metadata' => ['sale_id' => (string) $sale->id],
                 'success_url' => rtrim(config('payments.frontend_url'), '/').'/checkout/success?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => rtrim(config('payments.frontend_url'), '/').'/checkout?cancelled=1',
-                'line_items' => $sale->details->map(fn ($detail) => [
-                    'quantity' => $detail->quantity,
+                'line_items' => [[
+                    'quantity' => 1,
                     'price_data' => [
                         'currency' => config('payments.currency', 'usd'),
-                        'unit_amount' => (int) round($detail->unit_price * 100),
+                        'unit_amount' => (int) round(((float) $sale->total_amount) * 100),
                         'product_data' => [
-                            'name' => $detail->product_name,
+                            'name' => 'Pedido '.$sale->invoice_number,
                         ],
                     ],
-                ])->values()->all(),
+                ]],
             ]);
         } catch (\Throwable $e) {
             throw new RuntimeException('Error al crear la sesión de pago: '.$e->getMessage(), 0, $e);

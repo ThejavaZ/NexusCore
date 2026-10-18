@@ -13,6 +13,7 @@ import {
   FolderTree,
   UserCircle,
   LogOut,
+  Ticket,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useMounted } from "@/hooks/useMounted";
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
 const ADMIN_ONLY = [
   { label: "Usuarios", href: "/dashboard/users", icon: Users },
   { label: "Categorías", href: "/dashboard/categories", icon: FolderTree },
+  { label: "Cupones", href: "/dashboard/coupons", icon: Ticket },
 ];
 
 export default function DashboardLayout({

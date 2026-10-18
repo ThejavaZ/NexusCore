@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CreditCard, CheckCircle2, Download, XCircle } from "lucide-react";
+import { CreditCard, CheckCircle2, Download, XCircle, Ticket, X } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api, getAuthHeaders } from "@/utils/api";
@@ -20,6 +20,10 @@ function CheckoutView() {
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const [form, setForm] = useState({
     customer_name: "",
@@ -43,8 +47,26 @@ function CheckoutView() {
     (sum, item) => sum + parseFloat(String(item.price)) * item.quantity,
     0,
   );
-  const tax = total * 0.16;
-  const grandTotal = total + tax;
+  const discount = Math.min(appliedCoupon?.discount ?? 0, total);
+  const taxable = total - discount;
+  const tax = taxable * 0.16;
+  const grandTotal = taxable + tax;
+
+  const applyCoupon = async () => {
+    setCouponLoading(true);
+    setCouponError(null);
+    const res = await api<{ code: string; discount: number }>(
+      `coupons/validate?code=${encodeURIComponent(couponCode.trim())}&subtotal=${total}`,
+    );
+    if (res.error) {
+      setAppliedCoupon(null);
+      setCouponError(res.message);
+    } else {
+      setAppliedCoupon({ code: res.data.code, discount: res.data.discount });
+      setCouponError(null);
+    }
+    setCouponLoading(false);
+  };
 
   if (!mounted) return null;
 
@@ -100,6 +122,7 @@ function CheckoutView() {
       headers,
       body: JSON.stringify({
         ...form,
+        ...(appliedCoupon ? { coupon_code: appliedCoupon.code } : {}),
         items: cart.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
@@ -216,11 +239,62 @@ function CheckoutView() {
                 </div>
               ))}
             </div>
+            {/* Cupón */}
+            <div className="mb-4">
+              {appliedCoupon ? (
+                <div className="flex items-center justify-between px-3 py-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-sm">
+                  <span className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400">
+                    <Ticket size={15} />
+                    {appliedCoupon.code} · −${appliedCoupon.discount.toLocaleString()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAppliedCoupon(null);
+                      setCouponCode("");
+                    }}
+                    className="text-slate-400 hover:text-red-500"
+                    aria-label="Quitar cupón"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value)}
+                      placeholder="Código de cupón"
+                      className="flex-1 min-w-0 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      disabled={couponLoading || !couponCode.trim()}
+                      onClick={applyCoupon}
+                      className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-blue-600 text-white text-sm font-bold disabled:opacity-40 transition"
+                    >
+                      {couponLoading ? "…" : "Aplicar"}
+                    </button>
+                  </div>
+                  {couponError && (
+                    <p className="mt-2 text-xs text-red-500 font-medium">{couponError}</p>
+                  )}
+                </>
+              )}
+            </div>
             <div className="border-t border-slate-200 dark:border-slate-700 pt-3 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-slate-500">Subtotal</span>
                 <span>${total.toLocaleString()}</span>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-emerald-600 font-medium">
+                  <span>Descuento</span>
+                  <span>−${discount.toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-slate-500">IVA (16%)</span>
                 <span>${tax.toLocaleString()}</span>

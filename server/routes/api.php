@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\FakePaymentController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProductController;
@@ -42,6 +43,7 @@ Route::prefix('v1')->group(function () {
     */
     Route::post('orders', [SaleController::class, 'store'])->middleware('throttle:10,1');
     Route::get('orders/by-session/{sessionId}', [SaleController::class, 'bySession']);
+    Route::get('coupons/validate', [CouponController::class, 'validateCoupon'])->middleware('throttle:20,1');
     Route::post('payments/fake/confirm', [FakePaymentController::class, 'confirm'])->middleware('throttle:10,1');
     Route::post('stripe/webhook', [StripeWebhookController::class, 'handle']);
 
@@ -65,6 +67,7 @@ Route::prefix('v1')->group(function () {
         */
         Route::middleware('role:admin')->group(function () {
             Route::apiResource('users', UserController::class);
+            Route::apiResource('admin/coupons', CouponController::class);
         });
 
         /*
