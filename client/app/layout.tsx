@@ -17,8 +17,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NexusCore — Comercio y Operaciones",
-  description: "Plataforma de e-commerce y ERP con Laravel + Next.js",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  title: {
+    default: "NexusCore — Comercio y Operaciones",
+    template: "%s · NexusCore",
+  },
+  description:
+    "Plataforma de e-commerce y ERP con catálogo, ventas, reparaciones y dashboard en una sola aplicación.",
+  keywords: ["ecommerce", "ERP", "tienda online", "ventas", "reparaciones"],
+  openGraph: {
+    type: "website",
+    siteName: "NexusCore",
+    locale: "es_MX",
+  },
+  twitter: {
+    card: "summary",
+  },
 };
 
 export default function RootLayout({

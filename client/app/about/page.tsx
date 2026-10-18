@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Acerca de",
+  description:
+    "Conoce NexusCore: la plataforma de e-commerce y ERP construida con Laravel y Next.js para gestionar catálogo, ventas y reparaciones.",
+};
 
 export default function AboutPage() {
   return (
