@@ -47,7 +47,12 @@ server/.env
 server/database/database.sqlite
 server/public/build/
 server/storage/*.key
+server/storage/framework/cache/data/
+server/storage/framework/sessions/
+server/storage/framework/views/
+server/storage/logs/
 server/tests-report/
+server/.phpunit.result.cache
 
 # IDE
 .idea/

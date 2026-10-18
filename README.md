@@ -1,277 +1,221 @@
 # NexusCore
 
-> **Plataforma de Comercio y Operaciones** — un sistema que integra catálogo, inventario, ventas, reparaciones y gestión administrativa en una sola plataforma.
+> **Plataforma de Comercio y Operaciones** — catálogo, inventario, ventas, reparaciones y gestión administrativa en una sola plataforma.
 
-> **Nota:** este proyecto fue desarrollado originalmente como un proyecto académico multi-equipo bajo el nombre *AriaTechShop-ERP*. Tras finalizar la materia, se sometió a una auditoría técnica completa y se está refactorizando desde cero bajo una dirección técnica única. El historial git conserva los orígenes; el código actual representa la nueva arquitectura.
+[![CI](https://github.com/ThejavaZ/NexusCore/actions/workflows/ci.yml/badge.svg)](https://github.com/ThejavaZ/NexusCore/actions/workflows/ci.yml)
+![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
+![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-87%20Pest%20%2B%2013%20Vitest-fd4a5a?logo=pestphp&logoColor=white)
 
 ---
 
-## Stack Tecnológico
+## Qué es
+
+NexusCore es una plataforma full-stack que combina un **e-commerce** público con un **ERP interno**:
+
+- **Storefront**: catálogo con búsqueda y filtros, carrito, registro de clientes.
+- **ERP**: dashboard con KPIs, CRUD de productos/categorías, ventas con control de stock, reparaciones con historial de estados, gestión de usuarios.
+- **API**: REST versionada (`/api/v1`), autenticación Bearer con Sanctum, autorización por roles.
+
+> **Historia**: comenzó como proyecto académico multi-equipo (*AriaTechShop-ERP*). La auditoría inicial reveló auth decorativa, dominio duplicado y 0 tests. Este repo documenta el refactor completo bajo dirección técnica única.
+
+---
+
+## Stack
 
 | Capa | Tecnología |
 |------|-----------|
-| **Backend** | Laravel 12 · PHP 8.2+ · Sanctum (API tokens) · Pest (testing) |
+| **Backend** | Laravel 12 · PHP 8.4 · Sanctum · Pest |
 | **Frontend** | Next.js 16 (App Router) · React 19 · TypeScript strict · Tailwind CSS 4 |
-| **Estado** | Zustand (client) · TanStack Query (server) |
-| **Formularios** | React Hook Form + Zod |
-| **Base de datos** | MySQL 8 / SQLite (dev) |
-| **CI/CD** | GitHub Actions · Pint · PHPStan · Playwright |
+| **Estado** | Zustand |
+| **Testing** | Pest (87) · Vitest (13) |
+| **CI** | GitHub Actions · Pint · PHPStan (nivel 5) · ESLint |
+| **DB** | MySQL 8 / SQLite (dev + CI) |
 
 ---
 
-## Arquitectura
+## Estructura
 
 ```
 nexuscore/
 ├── server/                  # API Laravel (100% API, sin Blade/Livewire)
 │   ├── app/
-│   │   ├── Actions/          # Operaciones de negocio transaccionales
-│   │   ├── Enums/            # Backed Enums (roles, estados, tipos)
-│   │   ├── Exceptions/       # Excepciones custom + handler
+│   │   ├── Enums/           # UserRole, PaymentMethod, RepairStatus, StockMovementType
 │   │   ├── Http/
-│   │   │   ├── Controllers/Api/V1/
-│   │   │   ├── Requests/     # Form Requests (validación + auth)
-│   │   │   └── Resources/    # API Resources (contratos de respuesta)
-│   │   ├── Models/           # Eloquent Models
-│   │   ├── Notifications/    # Laravel Notifications (coladas)
-│   │   ├── Policies/         # Autorización por recurso
-│   │   └── Services/         # Lógica transversal justificada
+│   │   │   ├── Controllers/Api/   # Auth, Product, Category, Sale, Repair, User, Notification
+│   │   │   └── Middleware/        # EnsureUserRole (role:admin,staff)
+│   │   ├── Models/          # User, Product, Category, Sale, SaleDetail, Repair, StockMovement
+│   │   └── Services/        # EmailApiService (Resend)
 │   ├── database/
-│   │   ├── factories/
-│   │   ├── migrations/
-│   │   └── seeders/
-│   ├── routes/api.php        # /api/v1/*
-│   └── tests/                # Pest: Feature + Unit
+│   │   ├── factories/       # User, Product, Category, Sale, Repair
+│   │   ├── migrations/      # 11 migraciones limpias
+│   │   └── seeders/         # DatabaseSeeder, ProductSeeder, RepairSeeder
+│   ├── routes/api.php       # /api/v1/*
+│   └── tests/               # 87 tests Pest (Feature + Unit)
 │
 ├── client/                   # Next.js App Router
 │   ├── app/
-│   │   ├── (storefront)/     # /  /products  /cart  /checkout
-│   │   └── (admin)/          # /admin/*  dashboard, products, sales...
-│   ├── components/           # UI kit compartido (Button, Table, etc.)
-│   ├── features/             # Módulos: auth, catalog, cart, sales...
-│   ├── lib/                  # API client, utils
-│   ├── stores/               # Zustand stores
-│   └── types/                # Tipos TypeScript compartidos
+│   │   ├── page.tsx          # Home público
+│   │   ├── products/         # Catálogo con búsqueda/filtros
+│   │   ├── login/ register/  # Auth
+│   │   ├── dashboard/        # ERP (layout protegido por rol)
+│   │   └── profile/          # Perfil de usuario
+│   ├── components/           # Header, Footer
+│   ├── hooks/                # useMounted (SSR-safe)
+│   ├── store/                # useAuthStore, useCartStore (Zustand)
+│   ├── utils/                # api.ts (client tipado con Bearer)
+│   └── tests/                # 13 tests Vitest
 │
-└── docs/                     # ADRs, diagramas, guías
+└── .github/workflows/ci.yml  # Pipeline: Pint+PHPStan+Pest / ESLint+TS+Vitest+Build
 ```
 
-### Principios de Diseño
-
-1. **API-first**: el backend es una API REST versionada (`/api/v1`); el frontend es un cliente más.
-2. **Lógica en el servidor**: totales, stock y reglas comerciales se calculan en Actions, nunca en el cliente.
-3. **Autorización verificable**: Policies en cada recurso; roles `admin`/`staff`/`customer` con permisos explícitos.
-4. **Transacciones atómicas**: operaciones multi-tabla (venta + detalle + stock) se ejecutan dentro de `DB::transaction` con `lockForUpdate`.
-5. **Contratos tipados**: API Resources definen la forma de cada respuesta; TypeScript los refleja en el cliente.
-6. **Tests desde el día uno**: cada Action, Policy y endpoint crítico tiene cobertura antes de merge.
-
 ---
 
-## Plan de Sprints
+## Inicio Rápido
 
-El refactor se ejecuta en sprints secuenciales. Cada sprint tiene entregables claros y criterios de aceptación verificables.
+### Requisitos
+- PHP 8.4+ · Composer
+- Node.js 20+ · npm
 
----
-
-### Sprint 00 — Auditoría y Línea Base
-
-**Objetivo:** Diagnóstico completo del estado actual. Entender qué existe, qué funciona, qué está roto y por qué.
-
-- [x] Inventario de archivos, dependencias y módulos (backend + frontend)
-- [x] Revisión de migraciones, modelos, controladores y rutas
-- [x] Identificación de errores reproducibles y código duplicado
-- [x] Diagnóstico priorizado (P0 seguridad, P1 funcionalidad, P2 arquitectura, P3 calidad)
-
-**Entregable:** Documento de auditoría con lista priorizada de problemas y métricas de código.
-
----
-
-### Sprint 01 — Fundamentos y Calidad
-
-**Objetivo:** Purgar código muerto, establecer herramientas de calidad y definir la dirección técnica.
-
-- [ ] Eliminar Blade, Livewire, rutas web, código muerto (~500 LOC)
-- [ ] Configurar Pint (formato) + PHPStan (análisis estático)
-- [ ] Completar `.env.example` con todas las variables requeridas
-- [ ] Configurar CI: Pint, PHPStan, ESLint, `next build`
-- [ ] Crear ADR (Architecture Decision Record) inicial
-- [ ] Actualizar README con arquitectura real
-
-**Criterio de aceptación:** `composer pint --test` pasa limpio. `phpstan analyse` sin errores. CI verde en PR.
-
----
-
-### Sprint 02 — Modelo de Dominio y Persistencia
-
-**Objetivo:** Diseñar el esquema de datos unificado que resuelva la duplicación y los bugs silenciosos.
-
-- [ ] Unificar `inventories` + `products` + `categories` en módulo de catálogo
-- [ ] Crear `stock_movements` para auditoría de inventario
-- [ ] Corregir bug FK: `products.category_id` (hoy `integer()->constrained()` no crea nada)
-- [ ] Reemplazar `enum()` nativos por Backed Enums + columnas `string`
-- [ ] Añadir índices faltantes (`sales.sale_date`, `repairs.status`, `products.category_id`)
-- [ ] Completar Factories y Seeders (catálogo variado, ventas históricas, reparaciones)
-- [ ] Ejecutar `php artisan migrate:fresh --seed` y verificar integridad
-
-**Criterio de aceptación:** Todas las FK existen. Seeders crean datos consistentes. No hay columnas `enum()` nativos.
-
----
-
-### Sprint 03 — Identidad y Acceso
-
-**Objetivo:** Autenticación real con tokens, autorización por rol y protección de recursos.
-
-- [ ] Implementar `createToken()` en login (hoy Sanctum decorativo)
-- [ ] `POST /api/v1/auth/login` + `POST /api/v1/auth/logout` con throttle
-- [ ] Backed Enums: `UserRole` (admin, staff, customer)
-- [ ] Policies: `ProductPolicy`, `SalePolicy`, `RepairPolicy`, `UserPolicy`
-- [ ] Middleware `role:admin` para rutas administrativas
-- [ ] Tests: acceso permitido y denegado por rol en cada recurso
-
-**Criterio de aceptación:** Login devuelve token. Token autentica en rutas protegidas. Un `customer` no puede acceder a `/admin/*`. Tests de autorización pasan.
-
----
-
-### Sprint 04 — Catálogo e Inventario
-
-**Objetivo:** CRUD de productos/categorías con validación robusta, respuestas consistentes y movimiento de stock.
-
-- [ ] Form Requests para Product y Category
-- [ ] API Resources para Product, Category (contratos tipados)
-- [ ] Endpoints: `GET/POST/PUT/DELETE /api/v1/products`, `/categories`
-- [ ] Búsqueda, filtros (`?category=`, `?in_stock=`), paginación
-- [ ] `AdjustStock` y `RegisterStock` Actions (transacción + `lockForUpdate`)
-- [ ] Endpoint `GET /api/v1/stock-movements` con filtros
-- [ ] Tests: CRUD completo, validación, movimiento de stock atómico
-
-**Criterio de aceptación:** Crear producto valida todos los campos. Ajustar stock genera movimiento en `stock_movements`. Dos ajustes concurrentes no pierden stock.
-
----
-
-### Sprint 05 — Ventas y Reparaciones
-
-**Objetivo:** Ciclo de vida completo de venta y reparación con invariantes de negocio.
-
-- [ ] `CreateSale` Action: detalle + totales + descuento de stock (transacción)
-- [ ] `ChangeRepairStatus` Action: cambio + historial + notificación
-- [ ] Form Requests + API Resources para Sale y Repair
-- [ ] Notifications coladas para emails (reemplazar código inline)
-- [ ] `generateRepairNumber` seguro (retry en transacción)
-- [ ] Endpoints: `GET /api/v1/sales/chart` (datos para dashboard)
-- [ ] Tests: venta descuenta stock, totales correctos, cambio de estado genera historial
-
-**Criterio de aceptación:** Crear una venta con 3 productos decrementa stock y genera 3 `stock_movements`. Cambiar estado de reparación genera `RepairStatusHistory`. Los emails se envían por cola (no sincrónicos).
-
----
-
-### Sprint 06 — Frontend: Cimientos y Storefront
-
-**Objetivo:** API client tipado, auth end-to-end, storefront funcional con carrito y checkout.
-
-- [ ] `types/api.ts` con interfaces del backend (eliminar `any`)
-- [ ] Cliente API: Bearer token, manejo 401, discriminated union
-- [ ] TanStack Query para datos del servidor
-- [ ] React Hook Form + Zod sincronizado con reglas Laravel
-- [ ] UI kit: Button, Input, Card, Badge, Table, Spinner, Modal
-- [ ] Auth end-to-end: login → token → rutas protegidas
-- [ ] Storefront: home, `/products` (filtros), `/cart` (cantidades), `/checkout`
-- [ ] Dark mode, responsive, `next/image`
-
-**Criterio de aceptación:** Login funciona contra API real. Carrito muestra cantidad correcta. Checkout crea venta en backend. No hay `any` en el código TypeScript.
-
----
-
-### Sprint 07 — Frontend: Dashboard ERP
-
-**Objetivo:** Paneles administrativos completos que reemplazan Blade/Livewire.
-
-- [ ] Layout admin con guard por rol
-- [ ] `/admin` dashboard: KPIs + chart de ventas (recharts)
-- [ ] `/admin/products`: CRUD con tabla paginada
-- [ ] `/admin/categories`: CRUD
-- [ ] `/admin/inventory`: ajustes + historial de movimientos
-- [ ] `/admin/sales`: listado + creación con líneas
-- [ ] `/admin/repairs`: lista filtros + detalle + cambio estado
-- [ ] `/admin/users`: CRUD con roles
-- [ ] Estados vacíos, skeletons, errores en cada pantalla
-
-**Criterio de aceptación:** Admin puede crear producto, registrar venta y ver stock decrementado. Cambiar estado de reparación actualiza UI y envía notificación.
-
----
-
-### Sprint 08 — Testing y CI
-
-**Objetivo:** Cobertura >70% en endpoints críticos, e2e completo, CI que garantiza calidad.
-
-- [ ] Pest: tests de integración para todos los Actions y endpoints
-- [ ] Tests de Policies (autorización por rol)
-- [ ] Vitest + Testing Library: stores, API client, formularios
-- [ ] Playwright: `login → catálogo → carrito → checkout`
-- [ ] Playwright: `admin → producto → venta → stock`
-- [ ] CI: Pint, PHPStan, ESLint, Pest, Vitest, `next build`, Playwright
-- [ ] Coverage report configurado
-
-**Criterio de aceptación:** `php artisan test --coverage` >70% en `app/Actions` y `app/Http`. Playwright pasa end-to-end. CI bloquea merge si algo falla.
-
----
-
-### Sprint 09 — Portafolio y Publicación
-
-**Objetivo:** Documentación profesional, demo desplegada, retrospectiva técnica.
-
-- [ ] README completo: arquitectura, screenshots, setup, decisiones
-- [ ] ADRs documentados (por qué API pura, por qué Actions, por qué Enums)
-- [ ] Diagrama de arquitectura (Mermaid o imagen)
-- [ ] Guía de API (endpoints, request/response examples)
-- [ ] Desplegar demo (Netlify/Vercel + backend en Railway/Render)
-- [ ] Capturas de pantalla de cada módulo
-- [ ] Retrospectiva: qué se aprendió del refactor
-
-**Criterio de aceptación:** Un reclutador puede clonar el repo, leer el README y entender qué hace, cómo se usa y por qué está diseñado así. Demo accesible públicamente.
-
----
-
-## Requisitos Previos
-
-- PHP 8.2+
-- Composer
-- Node.js 20+
-- pnpm
-- MySQL 8 (o SQLite para desarrollo rápido)
-
-## Instalación Rápida
+### Backend
 
 ```bash
-# Backend
 cd server
 composer install
 cp .env.example .env
 php artisan key:generate
+touch database/database.sqlite
 php artisan migrate:fresh --seed
-php artisan serve  # http://localhost:8000
+php artisan serve          # http://localhost:8000
+```
 
-# Frontend
+### Frontend
+
+```bash
 cd client
-pnpm install
-cp .env.example .env.local
-pnpm dev  # http://localhost:3000
+npm install
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+npm run dev                # http://localhost:3000
+```
+
+### Cuentas de prueba (seed)
+
+| Rol | Email | Password |
+|-----|-------|----------|
+| Admin | admin@nexuscore.dev | password |
+| Staff | staff@nexuscore.dev | password |
+
+---
+
+## API
+
+Base URL: `http://localhost:8000/api/v1`
+
+### Públicos
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/auth/login` | Login → Bearer token |
+| POST | `/auth/register` | Registro de cliente |
+| GET | `/products` | Catálogo (paginado, búsqueda, filtro categoría) |
+| GET | `/products/{slug}` | Detalle de producto |
+| GET | `/categories` | Categorías activas |
+
+### Autenticados (Staff + Admin)
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/auth/me` | Usuario actual |
+| POST | `/auth/logout` | Revocar token |
+| GET | `/admin/products` | Listado completo (con inactivos) |
+| POST | `/admin/products` | Crear producto |
+| PUT | `/admin/products/{id}` | Actualizar producto |
+| DELETE | `/admin/products/{id}` | Desactivar producto |
+| POST | `/admin/products/{id}/adjust-stock` | Ajuste manual de stock |
+| GET | `/sales` | Listado de ventas |
+| POST | `/sales` | Registrar venta (descuenta stock) |
+| GET | `/sales/summary` | KPIs del dashboard |
+| GET | `/sales/chart` | Datos para gráfico |
+| GET | `/repairs` | Listado de reparaciones |
+| POST | `/repairs` | Registrar reparación |
+| POST | `/repairs/{id}/change-status` | Cambiar estado (genera historial) |
+| GET | `/repairs/summary` | Conteo por estado |
+
+### Solo Admin
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET/POST/PUT/DELETE | `/users` | Gestión de usuarios |
+
+### Ejemplo: Login
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@nexuscore.dev","password":"password"}'
+```
+
+```json
+{
+  "user": { "id": 1, "name": "Admin", "role": "admin" },
+  "access_token": "1|abc...",
+  "token_type": "Bearer"
+}
 ```
 
 ---
 
-## Historial
+## Decisiones Técnicas
 
-Este proyecto comenzó como un proyecto académico en equipo. La auditoría inicial reveló:
+| Decisión | Razón |
+|----------|-------|
+| **API-only** (sin Blade/Livewire) | Frontend independiente, despliegue separado, contratos claros |
+| **Sanctum Bearer** | Simple para SPA/mobile, sin cookies CSRF |
+| **Backed Enums** | Type-safe en PHP + TypeScript, autocompletado, validación limpia |
+| **Middleware de roles** | Un solo punto de control, testeable, legible en rutas |
+| **`DB::transaction` + `lockForUpdate`** | Ventas y ajustes de stock atómicos, sin condiciones de carrera |
+| **Respuestas `success/data`** | Contrato uniforme para el frontend |
+| **SQLite en CI** | Sin dependencia de servicios externos, más rápido |
 
-- API sin autenticar en endpoints críticos
-- Sanctum instalado pero sin `createToken()` (auth decorativa)
-- Dominio duplicado: `inventories` + `products` + `categories` como string libre
-- Lógica de negocio en controladores (530 LOC en un solo archivo)
-- 0 Form Requests, 0 Policies, 0 API Resources
-- Frontend sin tipos (`any`), 15+ rutas rotas, 0 tests
-- Bug silencioso: FK de `products.category_id` no existía
+---
 
-El refactor documentado en este README representa la transformación de ese código en una arquitectura mantenible, testeada y preparada para producción.
+## Quality
+
+```bash
+# Backend
+cd server
+php artisan test              # 87 tests, 168 assertions
+vendor/bin/pint --test        # Code style
+vendor/bin/phpstan analyse    # Static analysis nivel 5
+
+# Frontend
+cd client
+npm test                      # 13 tests Vitest
+npm run lint                  # ESLint 0 errores
+npm run typecheck             # TypeScript estricto
+npm run build                 # Next.js build
+```
+
+---
+
+## Roadmap
+
+- [x] Sprint 00 — Auditoría
+- [x] Sprint 01 — Limpieza y herramientas de calidad
+- [x] Sprint 02 — Modelo de dominio unificado
+- [x] Sprint 03 — Auth hardening con roles
+- [x] Sprint 04 — Catálogo CRUD completo
+- [x] Sprint 05 — Sales/Repairs endpoints
+- [x] Sprint 06 — Frontend rebranding + dashboard
+- [x] Sprint 07 — Suite de tests completa
+- [x] Sprint 08 — CI/CD pipeline
+- [ ] Sprint 09 — Pulido portfolio *(en curso)*
+- [ ] Dashboard: gráfico de ventas (recharts)
+- [ ] CRUD de productos desde el dashboard
+- [ ] Gestión de reparaciones con cambio de estado
+- [ ] Checkout end-to-end
 
 ---
 
