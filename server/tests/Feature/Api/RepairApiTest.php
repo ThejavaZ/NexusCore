@@ -28,7 +28,7 @@ test('se puede registrar una reparación válida', function () {
 
     $response
         ->assertStatus(201)
-        ->assertJsonPath('repair.status', 'pending');
+        ->assertJsonPath('data.status', 'pending');
 
     $this->assertDatabaseHas('repairs', [
         'customer_email' => 'ramon@nexuscore.test',
@@ -80,7 +80,7 @@ test('cambiar estado genera historial', function () {
             'notes' => 'Diagnóstico completado',
         ]);
 
-    $response->assertOk()->assertJsonPath('repair.status', 'diagnosed');
+    $response->assertOk()->assertJsonPath('data.status', 'diagnosed');
 
     $this->assertDatabaseHas('repair_status_histories', [
         'repair_id' => $repair->id,
@@ -92,4 +92,37 @@ test('el listado de reparaciones requiere autenticación', function () {
     $response = $this->getJson('/api/v1/repairs');
 
     $response->assertUnauthorized();
+});
+
+test('el resumen de reparaciones cuenta por estado', function () {
+    Repair::factory()->pending()->count(3)->create();
+    Repair::factory()->completed()->count(2)->create();
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson('/api/v1/repairs/summary');
+
+    $response->assertOk()
+        ->assertJsonPath('data.pending', 3)
+        ->assertJsonPath('data.completed', 2)
+        ->assertJsonPath('data.total', 5);
+});
+
+test('el listado filtra por técnico asignado', function () {
+    $tech = User::factory()->staff()->create();
+    Repair::factory()->create(['assigned_to' => $tech->id]);
+    Repair::factory()->pending()->create(); // assigned_to: null
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson("/api/v1/repairs?assigned_to={$tech->id}");
+
+    $response->assertOk()->assertJsonCount(1, 'data.data');
+});
+
+test('el listado busca por número de reparación', function () {
+    Repair::factory()->create(['repair_number' => 'RRP-00999']);
+
+    $response = $this->actingAs($this->user, 'sanctum')
+        ->getJson('/api/v1/repairs?search=RRP-00999');
+
+    $response->assertOk()->assertJsonCount(1, 'data.data');
 });

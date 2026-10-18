@@ -71,8 +71,10 @@ Route::prefix('v1')->group(function () {
             /*
             | Sales & Repairs
             */
-            Route::apiResource('sales', SaleController::class)->only(['index', 'show', 'store']);
+            Route::get('sales/summary', [SaleController::class, 'summary'])->name('sales.summary');
             Route::get('sales/chart', [SaleController::class, 'chart'])->name('sales.chart');
+            Route::apiResource('sales', SaleController::class)->only(['index', 'show', 'store']);
+            Route::get('repairs/summary', [RepairController::class, 'summary'])->name('repairs.summary');
             Route::apiResource('repairs', RepairController::class);
             Route::post('repairs/{repair}/change-status', [RepairController::class, 'changeStatus'])
                 ->name('repairs.change-status');

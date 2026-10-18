@@ -17,26 +17,43 @@ class SaleController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Sale::with('details');
+        $query = Sale::with('details')->latest('sale_date');
 
         if ($request->filled('from')) {
-            $query->where('sale_date', '>=', $request->from);
+            $query->where('sale_date', '>=', $request->date('from'));
         }
 
         if ($request->filled('to')) {
-            $query->where('sale_date', '<=', $request->to);
+            $query->where('sale_date', '<=', $request->date('to')->endOfDay());
         }
 
-        $sales = $query->latest('sale_date')->paginate(15);
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->string('payment_method'));
+        }
 
-        return response()->json($sales);
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(fn ($q) => $q
+                ->where('invoice_number', 'like', "%{$search}%")
+                ->orWhere('customer_name', 'like', "%{$search}%"));
+        }
+
+        $sales = $query->paginate($request->integer('per_page', 15));
+
+        return response()->json([
+            'success' => true,
+            'data' => $sales,
+        ]);
     }
 
     public function show(Sale $sale): JsonResponse
     {
         $sale->load('details');
 
-        return response()->json(['sale' => $sale]);
+        return response()->json([
+            'success' => true,
+            'data' => $sale,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -57,7 +74,7 @@ class SaleController extends Controller
                     $product = Product::lockForUpdate()->findOrFail($item['product_id']);
 
                     if ($product->stock < $item['quantity']) {
-                        throw new \Exception("Stock insuficiente para {$product->name}");
+                        throw new \RuntimeException("Stock insuficiente para {$product->name}");
                     }
 
                     return [
@@ -114,18 +131,59 @@ class SaleController extends Controller
             });
 
             return response()->json([
+                'success' => true,
                 'message' => 'Venta registrada exitosamente',
-                'sale' => $sale->load('details'),
+                'data' => $sale->load('details'),
             ], 201);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (\Exception $e) {
             Log::error('Error al crear venta', ['error' => $e->getMessage()]);
 
             return response()->json([
+                'success' => false,
                 'message' => 'Error al registrar la venta',
             ], 500);
         }
     }
 
+    /**
+     * Dashboard summary — totals, counts, top products.
+     */
+    public function summary(): JsonResponse
+    {
+        $todaySales = Sale::whereDate('sale_date', today())->count();
+        $todayRevenue = Sale::whereDate('sale_date', today())->sum('total_amount');
+        $monthRevenue = Sale::whereMonth('sale_date', now()->month)
+            ->whereYear('sale_date', now()->year)
+            ->sum('total_amount');
+        $totalSales = Sale::count();
+
+        $topProducts = DB::table('sale_details')
+            ->selectRaw('product_name, SUM(quantity) as total_qty, SUM(total_price) as total_revenue')
+            ->groupBy('product_name')
+            ->orderByDesc('total_revenue')
+            ->limit(5)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'today_sales' => $todaySales,
+                'today_revenue' => (float) $todayRevenue,
+                'month_revenue' => (float) $monthRevenue,
+                'total_sales' => $totalSales,
+                'top_products' => $topProducts,
+            ],
+        ]);
+    }
+
+    /**
+     * Revenue chart data grouped by date.
+     */
     public function chart(): JsonResponse
     {
         $sales = DB::table('sales')
@@ -134,6 +192,9 @@ class SaleController extends Controller
             ->orderBy('date')
             ->get();
 
-        return response()->json($sales);
+        return response()->json([
+            'success' => true,
+            'data' => $sales,
+        ]);
     }
 }

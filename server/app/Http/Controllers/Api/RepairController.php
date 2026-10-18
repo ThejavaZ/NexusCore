@@ -19,25 +19,31 @@ class RepairController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Repair::with(['customer', 'technician']);
+        $query = Repair::with(['customer', 'technician'])->latest();
 
         if ($request->filled('status')) {
             $query->byStatus(RepairStatus::from($request->status));
         }
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('repair_number', 'like', "%{$search}%")
-                    ->orWhere('customer_name', 'like', "%{$search}%")
-                    ->orWhere('customer_email', 'like', "%{$search}%")
-                    ->orWhere('device_type', 'like', "%{$search}%");
-            });
+        if ($request->filled('assigned_to')) {
+            $query->where('assigned_to', $request->integer('assigned_to'));
         }
 
-        $repairs = $query->latest()->paginate(15);
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(fn ($q) => $q
+                ->where('repair_number', 'like', "%{$search}%")
+                ->orWhere('customer_name', 'like', "%{$search}%")
+                ->orWhere('customer_email', 'like', "%{$search}%")
+                ->orWhere('device_type', 'like', "%{$search}%"));
+        }
 
-        return response()->json($repairs);
+        $repairs = $query->paginate($request->integer('per_page', 15));
+
+        return response()->json([
+            'success' => true,
+            'data' => $repairs,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
@@ -78,13 +84,15 @@ class RepairController extends Controller
             $this->emailService->sendRegistrationEmail($repair);
 
             return response()->json([
+                'success' => true,
                 'message' => 'Reparación registrada exitosamente',
-                'repair' => $repair,
+                'data' => $repair,
             ], 201);
         } catch (\Exception $e) {
             Log::error('Error al crear reparación', ['error' => $e->getMessage()]);
 
             return response()->json([
+                'success' => false,
                 'message' => 'Error al crear la reparación',
             ], 500);
         }
@@ -94,7 +102,10 @@ class RepairController extends Controller
     {
         $repair->load(['customer', 'technician', 'statusHistory.user']);
 
-        return response()->json(['repair' => $repair]);
+        return response()->json([
+            'success' => true,
+            'data' => $repair,
+        ]);
     }
 
     public function update(Request $request, Repair $repair): JsonResponse
@@ -113,8 +124,9 @@ class RepairController extends Controller
         $repair->update($data);
 
         return response()->json([
+            'success' => true,
             'message' => 'Reparación actualizada exitosamente',
-            'repair' => $repair->load(['customer', 'technician']),
+            'data' => $repair->load(['customer', 'technician']),
         ]);
     }
 
@@ -122,7 +134,10 @@ class RepairController extends Controller
     {
         $repair->delete();
 
-        return response()->json(['message' => 'Reparación eliminada exitosamente']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Reparación eliminada exitosamente',
+        ]);
     }
 
     public function changeStatus(Request $request, Repair $repair): JsonResponse
@@ -163,16 +178,46 @@ class RepairController extends Controller
             $repair->load(['customer', 'technician', 'statusHistory']);
 
             return response()->json([
+                'success' => true,
                 'message' => 'Estado actualizado exitosamente',
-                'repair' => $repair,
+                'data' => $repair,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error al cambiar estado de reparación', ['error' => $e->getMessage()]);
 
             return response()->json([
+                'success' => false,
                 'message' => 'Error al cambiar el estado',
             ], 500);
         }
+    }
+
+    /**
+     * Dashboard summary — count by status.
+     */
+    public function summary(): JsonResponse
+    {
+        $byStatus = Repair::selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
+        $pending = $byStatus->get('pending', 0);
+        $inProgress = $byStatus->get('in_progress', 0)
+            + $byStatus->get('diagnosed', 0)
+            + $byStatus->get('approved', 0);
+        $completed = $byStatus->get('completed', 0);
+        $delivered = $byStatus->get('delivered', 0);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'pending' => $pending,
+                'in_progress' => $inProgress,
+                'completed' => $completed,
+                'delivered' => $delivered,
+                'total' => array_sum($byStatus->toArray()),
+            ],
+        ]);
     }
 }
