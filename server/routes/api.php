@@ -50,15 +50,36 @@ Route::prefix('v1')->group(function () {
         });
 
         /*
-        | Staff + Admin — sales, repairs, notifications
+        | Staff + Admin — catalog management, sales, repairs, notifications
         */
         Route::middleware('role:admin,staff')->group(function () {
+            /*
+            | Catalog CRUD
+            */
+            Route::get('admin/products', [ProductController::class, 'adminIndex']);
+            Route::get('admin/products/{product}', [ProductController::class, 'showById']);
+            Route::post('admin/products', [ProductController::class, 'store']);
+            Route::put('admin/products/{product}', [ProductController::class, 'update']);
+            Route::delete('admin/products/{product}', [ProductController::class, 'destroy']);
+            Route::post('admin/products/{product}/adjust-stock', [ProductController::class, 'adjustStock']);
+
+            Route::get('admin/categories', [CategoryController::class, 'adminIndex']);
+            Route::post('admin/categories', [CategoryController::class, 'store']);
+            Route::put('admin/categories/{category}', [CategoryController::class, 'update']);
+            Route::delete('admin/categories/{category}', [CategoryController::class, 'destroy']);
+
+            /*
+            | Sales & Repairs
+            */
             Route::apiResource('sales', SaleController::class)->only(['index', 'show', 'store']);
             Route::get('sales/chart', [SaleController::class, 'chart'])->name('sales.chart');
             Route::apiResource('repairs', RepairController::class);
             Route::post('repairs/{repair}/change-status', [RepairController::class, 'changeStatus'])
                 ->name('repairs.change-status');
 
+            /*
+            | Notifications
+            */
             Route::prefix('notifications')->group(function () {
                 Route::post('welcome', [NotificationController::class, 'sendWelcome']);
                 Route::post('order-confirmation', [NotificationController::class, 'sendOrderConfirmation']);

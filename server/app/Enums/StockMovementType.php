@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum StockMovementType: string
 {
+    case Initial = 'initial';
     case Purchase = 'purchase';
     case Sale = 'sale';
     case Adjustment = 'adjustment';
@@ -12,6 +13,7 @@ enum StockMovementType: string
     public function label(): string
     {
         return match ($this) {
+            self::Initial => 'Inicial',
             self::Purchase => 'Compra',
             self::Sale => 'Venta',
             self::Adjustment => 'Ajuste',
@@ -21,6 +23,6 @@ enum StockMovementType: string
 
     public function isEntry(): bool
     {
-        return in_array($this, [self::Purchase, self::Restock]);
+        return in_array($this, [self::Initial, self::Purchase, self::Restock]);
     }
 }
