@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Aria TechShop",
-  description: "Aplicacion app",
+  title: "NexusCore — Comercio y Operaciones",
+  description: "Plataforma de e-commerce y ERP con Laravel + Next.js",
 };
 
 export default function RootLayout({

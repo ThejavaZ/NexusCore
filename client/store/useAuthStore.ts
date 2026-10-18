@@ -1,25 +1,42 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: "admin" | "staff" | "customer";
+  is_active: boolean;
+}
+
 interface AuthState {
-  user: any | null;
+  user: User | null;
   token: string | null;
-  setAuth: (user: any, token: string) => void;
+  setAuth: (user: User, token: string) => void;
   logout: () => void;
+  isAdmin: () => boolean;
+  isStaff: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
-      setAuth: (user, token) => set({ user, token }),
+      setAuth: (user, token) => {
+        localStorage.setItem("nexuscore_token", token);
+        set({ user, token });
+      },
       logout: () => {
-        localStorage.removeItem("aria_token");
-        localStorage.removeItem("aria_user");
+        localStorage.removeItem("nexuscore_token");
         set({ user: null, token: null });
       },
+      isAdmin: () => get().user?.role === "admin",
+      isStaff: () => get().user?.role === "admin" || get().user?.role === "staff",
     }),
-    { name: "aria-auth" }, // Esto lo guarda automáticamente en localStorage
+    {
+      name: "nexuscore-auth",
+      partialize: (state) => ({ user: state.user, token: state.token }),
+    },
   ),
 );
