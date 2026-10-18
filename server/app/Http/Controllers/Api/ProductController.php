@@ -19,8 +19,7 @@ class ProductController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Product::with('category:id,name,slug')
-            ->where('is_active', true)
-            ->orderByDesc('id');
+            ->where('is_active', true);
 
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->integer('category_id'));
@@ -32,6 +31,21 @@ class ProductController extends Controller
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('sku', 'like', "%{$search}%"));
         }
+
+        if ($request->filled('min_price')) {
+            $query->where('price', '>=', (float) $request->input('min_price'));
+        }
+
+        if ($request->filled('max_price')) {
+            $query->where('price', '<=', (float) $request->input('max_price'));
+        }
+
+        match ($request->string('sort', 'newest')->toString()) {
+            'price_asc' => $query->orderBy('price'),
+            'price_desc' => $query->orderByDesc('price'),
+            'name' => $query->orderBy('name'),
+            default => $query->orderByDesc('id'),
+        };
 
         $products = $query->paginate($request->integer('per_page', 12));
 

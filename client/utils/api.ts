@@ -10,6 +10,17 @@ export interface Paginated<T> {
   per_page: number;
 }
 
+function mergeHeaders(init?: HeadersInit): Record<string, string> {
+  if (!init) return {};
+  if (init instanceof Headers) {
+    const result: Record<string, string> = {};
+    init.forEach((value, key) => { result[key] = value; });
+    return result;
+  }
+  if (Array.isArray(init)) return Object.fromEntries(init);
+  return { ...init };
+}
+
 export async function api<T = unknown>(
   endpoint: string,
   options: ApiOptions = {},
@@ -22,6 +33,7 @@ export async function api<T = unknown>(
 
   const headers: Record<string, string> = {
     Accept: "application/json",
+    ...mergeHeaders(options.headers),
   };
 
   // Content-Type solo con body JSON: FormData lleva su propio boundary

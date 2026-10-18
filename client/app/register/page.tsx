@@ -11,6 +11,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 interface RegisterErrors {
@@ -21,6 +23,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<RegisterErrors | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -54,21 +57,24 @@ export default function RegisterPage() {
     router.push("/login?registered=1");
   };
 
+  const inputClass =
+    "w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50 text-slate-900 dark:text-white placeholder:text-slate-400";
+
   return (
     <div className="min-h-[90vh] flex items-center justify-center px-4 py-12">
-      <div className="max-w-md w-full bg-white rounded-3xl border border-gray-100 shadow-2xl p-8">
+      <div className="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-8">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl mb-4">
             <ShieldCheck size={32} />
           </div>
-          <h1 className="text-3xl font-black text-slate-900">Crea tu cuenta</h1>
-          <p className="text-gray-500 mt-2">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Crea tu cuenta</h1>
+          <p className="text-slate-500 mt-2">
             Únete a la comunidad de NexusCore
           </p>
         </div>
 
         {errors && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs rounded-xl border border-red-100 dark:border-red-900/40">
             <p className="font-bold mb-1">Hay problemas con los datos:</p>
             <ul className="list-disc pl-4">
               {Object.values(errors)
@@ -82,16 +88,16 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Nombre Completo
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-3 text-gray-400" size={20} />
+              <User className="absolute left-3 top-3 text-slate-400" size={20} />
               <input
                 type="text"
                 required
                 disabled={loading}
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50"
+                className={inputClass}
                 placeholder="Tu nombre"
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
@@ -101,16 +107,16 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5">
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Correo Electrónico
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
+              <Mail className="absolute left-3 top-3 text-slate-400" size={20} />
               <input
                 type="email"
                 required
                 disabled={loading}
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50"
+                className={inputClass}
                 placeholder="tu@correo.com"
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -121,40 +127,42 @@ export default function RegisterPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Contraseña
               </label>
               <div className="relative">
-                <Lock
-                  className="absolute left-3 top-3 text-gray-400"
-                  size={20}
-                />
+                <Lock className="absolute left-3 top-3 text-slate-400" size={20} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   disabled={loading}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50"
+                  className={inputClass}
                   placeholder="••••••••"
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Confirmar
               </label>
               <div className="relative">
-                <Lock
-                  className="absolute left-3 top-3 text-gray-400"
-                  size={20}
-                />
+                <Lock className="absolute left-3 top-3 text-slate-400" size={20} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   disabled={loading}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition disabled:opacity-50"
+                  className={inputClass}
                   placeholder="••••••••"
                   onChange={(e) =>
                     setFormData({
@@ -166,6 +174,10 @@ export default function RegisterPage() {
               </div>
             </div>
           </div>
+
+          <p className="text-xs text-slate-400">
+            Mínimo 8 caracteres con mayúsculas, minúsculas, números y símbolos.
+          </p>
 
           <button
             type="submit"
@@ -182,8 +194,8 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <div className="mt-8 text-center pt-6 border-t border-gray-100">
-          <p className="text-gray-600">
+        <div className="mt-6 text-center pt-6 border-t border-slate-100 dark:border-slate-800">
+          <p className="text-slate-600 dark:text-slate-400">
             ¿Ya tienes cuenta?{" "}
             <Link
               href="/login"

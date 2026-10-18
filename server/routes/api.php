@@ -36,6 +36,11 @@ Route::prefix('v1')->group(function () {
     Route::get('categories', [CategoryController::class, 'index']);
 
     /*
+    | Public: storefront checkout (guest or authenticated)
+    */
+    Route::post('orders', [SaleController::class, 'store'])->middleware('throttle:10,1');
+
+    /*
     | Protected: authenticated via Sanctum Bearer token
     */
     Route::middleware('auth:sanctum')->group(function () {

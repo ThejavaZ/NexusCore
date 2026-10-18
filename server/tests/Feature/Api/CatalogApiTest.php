@@ -41,6 +41,43 @@ test('el catálogo busca productos por nombre', function () {
     $response->assertOk()->assertJsonCount(1, 'data.data');
 });
 
+test('el catálogo filtra por rango de precio', function () {
+    Product::factory()->create(['name' => 'Barato', 'price' => 100]);
+    Product::factory()->create(['name' => 'Medio', 'price' => 500]);
+    Product::factory()->create(['name' => 'Caro', 'price' => 2000]);
+
+    $this->getJson('/api/v1/products?min_price=400&max_price=1000')
+        ->assertOk()
+        ->assertJsonCount(1, 'data.data')
+        ->assertJsonPath('data.data.0.name', 'Medio');
+
+    $this->getJson('/api/v1/products?max_price=400')
+        ->assertOk()
+        ->assertJsonCount(1, 'data.data');
+});
+
+test('el catálogo ordena por precio ascendente y descendente', function () {
+    Product::factory()->create(['name' => 'Caro', 'price' => 900]);
+    Product::factory()->create(['name' => 'Barato', 'price' => 100]);
+
+    $this->getJson('/api/v1/products?sort=price_asc')
+        ->assertOk()
+        ->assertJsonPath('data.data.0.name', 'Barato');
+
+    $this->getJson('/api/v1/products?sort=price_desc')
+        ->assertOk()
+        ->assertJsonPath('data.data.0.name', 'Caro');
+});
+
+test('el catálogo ordena por nombre', function () {
+    Product::factory()->create(['name' => 'Zeta']);
+    Product::factory()->create(['name' => 'Alfa']);
+
+    $this->getJson('/api/v1/products?sort=name')
+        ->assertOk()
+        ->assertJsonPath('data.data.0.name', 'Alfa');
+});
+
 test('se muestra un producto por su slug', function () {
     Product::factory()->create(['name' => 'RTX 5090', 'slug' => 'rtx-5090']);
 

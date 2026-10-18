@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useCartStore } from "@/store/useCartStore";
 import { api } from "@/utils/api";
 import { resolveImageUrl } from "@/utils/image";
@@ -18,6 +19,7 @@ interface Product {
 interface Category {
   id: number;
   name: string;
+  slug: string;
 }
 
 interface Paginated<T> {
@@ -27,12 +29,16 @@ interface Paginated<T> {
   total: number;
 }
 
-export default function ProductsPage() {
+function ProductsView() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [filter, setFilter] = useState<number | null>(null);
   const [search, setSearch] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [sort, setSort] = useState("newest");
   const [loading, setLoading] = useState(true);
+  const categorySlug = useSearchParams().get("category");
 
   const addToCart = useCartStore((state) => state.addToCart);
 
@@ -41,13 +47,16 @@ export default function ProductsPage() {
     const params = new URLSearchParams();
     if (filter) params.set("category_id", String(filter));
     if (search) params.set("search", search);
+    if (minPrice) params.set("min_price", minPrice);
+    if (maxPrice) params.set("max_price", maxPrice);
+    params.set("sort", sort);
 
     const res = await api<Paginated<Product>>(`products?${params}`);
     if (!res.error) {
       setProducts(res.data.data);
     }
     setLoading(false);
-  }, [filter, search]);
+  }, [filter, search, minPrice, maxPrice, sort]);
 
   useEffect(() => {
     const timer = setTimeout(fetchProducts, 300);
@@ -56,34 +65,92 @@ export default function ProductsPage() {
 
   useEffect(() => {
     api<Category[]>("categories").then((res) => {
-      if (!res.error) setCategories(res.data);
+      if (res.error) return;
+      setCategories(res.data);
+      if (categorySlug) {
+        const match = res.data.find((c) => c.slug === categorySlug);
+        if (match) setFilter((prev) => prev ?? match.id);
+      }
     });
-  }, []);
+  }, [categorySlug]);
 
   return (
     <div className="flex flex-col md:flex-row gap-8">
       {/* Sidebar */}
       <aside className="w-full md:w-64 space-y-6">
         <div>
-          <label className="block text-sm font-bold mb-2">Buscar</label>
+          <label className="block text-sm font-bold mb-2 text-slate-800 dark:text-slate-200">Buscar</label>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Nombre o SKU..."
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
           />
         </div>
 
         <div>
-          <h2 className="text-lg font-bold mb-4 border-b pb-2">Categorías</h2>
+          <label className="block text-sm font-bold mb-2 text-slate-800 dark:text-slate-200">Ordenar por</label>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
+          >
+            <option value="newest">Más recientes</option>
+            <option value="price_asc">Precio: menor a mayor</option>
+            <option value="price_desc">Precio: mayor a menor</option>
+            <option value="name">Nombre A-Z</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold mb-2 text-slate-800 dark:text-slate-200">Precio</label>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min="0"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              placeholder="Mín."
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
+            />
+            <input
+              type="number"
+              min="0"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              placeholder="Máx."
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm"
+            />
+          </div>
+        </div>
+
+        {(filter !== null || search || minPrice || maxPrice || sort !== "newest") && (
+          <button
+            onClick={() => {
+              setFilter(null);
+              setSearch("");
+              setMinPrice("");
+              setMaxPrice("");
+              setSort("newest");
+            }}
+            className="text-sm font-bold text-blue-600 hover:underline"
+          >
+            Limpiar filtros
+          </button>
+        )}
+
+        <div>
+          <h2 className="text-lg font-bold mb-4 border-b pb-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
+            Categorías
+          </h2>
           <nav className="flex flex-col gap-2">
             <button
               onClick={() => setFilter(null)}
               className={`text-left px-3 py-2 rounded-lg transition ${
                 filter === null
                   ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
+                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               Todas
@@ -95,7 +162,7 @@ export default function ProductsPage() {
                 className={`text-left px-3 py-2 rounded-lg transition ${
                   filter === cat.id
                     ? "bg-blue-600 text-white"
-                    : "text-slate-600 hover:bg-slate-100"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
                 {cat.name}
@@ -168,5 +235,13 @@ export default function ProductsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProductsView />
+    </Suspense>
   );
 }

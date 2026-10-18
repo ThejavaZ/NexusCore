@@ -2,12 +2,42 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import {
+  CreditCard, CheckCircle2, FileText, Download,
+} from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api, getAuthHeaders } from "@/utils/api";
 import { useMounted } from "@/hooks/useMounted";
 import { Button, Input, Select } from "@/components/ui";
+
+interface OrderDetail {
+  id: number;
+  product_name: string;
+  unit_price: string;
+  quantity: number;
+  total_price: string;
+}
+
+interface Order {
+  id: number;
+  invoice_number: string;
+  sale_date: string;
+  customer_name: string;
+  customer_email: string | null;
+  subtotal: string;
+  tax_amount: string;
+  total_amount: string;
+  payment_method: string;
+  details: OrderDetail[];
+}
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: "Efectivo",
+  card: "Tarjeta",
+  transfer: "Transferencia",
+};
 
 export default function CheckoutPage() {
   const { cart, clearCart, count } = useCartStore();
@@ -15,7 +45,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const mounted = useMounted();
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
@@ -45,18 +75,107 @@ export default function CheckoutPage() {
 
   if (!mounted) return null;
 
-  if (success) {
+  if (order) {
     return (
-      <div className="text-center py-20 max-w-md mx-auto">
-        <CheckCircle2 size={64} className="mx-auto text-emerald-500 mb-4" />
-        <h1 className="text-2xl font-black mb-2">¡Venta registrada!</h1>
-        <p className="text-slate-500 mb-6">La venta se procesó correctamente y el stock fue actualizado.</p>
-        <Button onClick={() => router.push("/products")}>Volver al catálogo</Button>
+      <div className="max-w-2xl mx-auto">
+        {/* Success header */}
+        <div className="text-center mb-8">
+          <CheckCircle2 size={64} className="mx-auto text-emerald-500 mb-4" />
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">
+            ¡Pedido confirmado!
+          </h1>
+          <p className="text-slate-500 mt-2">
+            Gracias, {order.customer_name}. Tu compra fue registrada y el stock fue actualizado.
+          </p>
+        </div>
+
+        {/* Invoice */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+          <div className="bg-slate-900 dark:bg-slate-800 text-white px-8 py-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileText size={22} className="text-blue-400" />
+              <div>
+                <p className="text-xs text-slate-400 uppercase font-bold">Factura</p>
+                <p className="text-xl font-black">{order.invoice_number}</p>
+              </div>
+            </div>
+            <div className="text-right text-sm">
+              <p className="text-slate-400">Fecha</p>
+              <p className="font-bold">{new Date(order.sale_date).toLocaleString("es-MX")}</p>
+            </div>
+          </div>
+
+          <div className="p-8 space-y-6">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs uppercase font-bold text-slate-400">Cliente</p>
+                <p className="font-medium text-slate-800 dark:text-slate-200">{order.customer_name}</p>
+                {order.customer_email && (
+                  <p className="text-slate-500">{order.customer_email}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs uppercase font-bold text-slate-400">Método de pago</p>
+                <p className="font-medium text-slate-800 dark:text-slate-200">
+                  {PAYMENT_LABELS[order.payment_method] ?? order.payment_method}
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+              <p className="text-xs uppercase font-bold text-slate-400 mb-3">Productos</p>
+              <div className="space-y-2">
+                {order.details.map((d) => (
+                  <div
+                    key={d.id}
+                    className="flex justify-between text-sm py-2 border-b border-slate-50 dark:border-slate-800 last:border-0"
+                  >
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {d.product_name}{" "}
+                      <span className="text-slate-400">
+                        × {d.quantity} @ ${parseFloat(d.unit_price).toLocaleString()}
+                      </span>
+                    </span>
+                    <span className="font-medium text-slate-900 dark:text-white">
+                      ${parseFloat(d.total_price).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Subtotal</span>
+                <span>${parseFloat(order.subtotal).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">IVA (16%)</span>
+                <span>${parseFloat(order.tax_amount).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xl font-black pt-2">
+                <span>Total</span>
+                <span className="text-blue-600">
+                  ${parseFloat(order.total_amount).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 mt-6">
+          <Button variant="secondary" className="flex-1" onClick={() => window.print()}>
+            <Download size={16} /> Imprimir factura
+          </Button>
+          <Button className="flex-1" onClick={() => router.push("/products")}>
+            Seguir comprando
+          </Button>
+        </div>
       </div>
     );
   }
 
-  if (cart.length === 0 && mounted) {
+  if (cart.length === 0) {
     return (
       <div className="text-center py-20">
         <h1 className="text-2xl font-bold mb-2">Carrito vacío</h1>
@@ -68,17 +187,14 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) {
-      router.push("/login");
-      return;
-    }
 
     setLoading(true);
     setError(null);
 
-    const res = await api("sales", {
+    const headers = token ? getAuthHeaders() : undefined;
+    const res = await api<Order>("orders", {
       method: "POST",
-      headers: getAuthHeaders(),
+      headers,
       body: JSON.stringify({
         ...form,
         items: cart.map((item) => ({
@@ -95,19 +211,30 @@ export default function CheckoutPage() {
     }
 
     clearCart();
-    setSuccess(true);
+    setOrder(res.data);
     setLoading(false);
   };
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-black mb-8">Finalizar compra</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white">Finalizar compra</h1>
+        {!token && (
+          <p className="text-sm text-slate-500">
+            ¿Ya tienes cuenta?{" "}
+            <Link href="/login" className="text-blue-600 font-bold hover:underline">
+              Inicia sesión
+            </Link>{" "}
+            o compra como invitado.
+          </p>
+        )}
+      </div>
 
       <div className="grid md:grid-cols-3 gap-8">
         {/* Form */}
         <form onSubmit={handleSubmit} className="md:col-span-2 space-y-5">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
-            <h2 className="font-bold mb-4 flex items-center gap-2">
+            <h2 className="font-bold mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
               <CreditCard size={18} /> Datos de compra
             </h2>
 
@@ -131,7 +258,7 @@ export default function CheckoutPage() {
                 placeholder="555 123 4567"
               />
               <Input
-                label="Email"
+                label="Email (para tu comprobante)"
                 type="email"
                 required
                 value={form.customer_email}
@@ -150,21 +277,17 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {!token && (
-            <p className="text-sm text-slate-500">
-              Necesitas{" "}
-              <button type="button" onClick={() => router.push("/login")} className="text-blue-600 font-bold hover:underline">
-                iniciar sesión
-              </button>{" "}
-              para completar la compra.
-            </p>
-          )}
+          <p className="text-xs text-slate-400">
+            ✓ Puedes comprar sin cuenta — solo necesitamos tus datos para la factura.
+          </p>
         </form>
 
         {/* Summary */}
         <div>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sticky top-24">
-            <h2 className="font-bold mb-4">Tu pedido ({count} unidades)</h2>
+            <h2 className="font-bold mb-4 text-slate-900 dark:text-white">
+              Tu pedido ({count} unidades)
+            </h2>
             <div className="space-y-2 text-sm mb-4">
               {cart.map((item) => (
                 <div key={item.id} className="flex justify-between gap-2">
@@ -172,7 +295,7 @@ export default function CheckoutPage() {
                     {item.name}
                     <span className="text-slate-400 ml-1">× {item.quantity}</span>
                   </span>
-                  <span className="font-medium shrink-0">
+                  <span className="font-medium shrink-0 text-slate-800 dark:text-slate-200">
                     ${(parseFloat(String(item.price)) * item.quantity).toLocaleString()}
                   </span>
                 </div>
@@ -197,7 +320,6 @@ export default function CheckoutPage() {
               className="w-full mt-6"
               size="lg"
               loading={loading}
-              disabled={!token}
               onClick={handleSubmit}
             >
               Confirmar compra
