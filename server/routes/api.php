@@ -42,6 +42,7 @@ Route::prefix('v1')->group(function () {
 
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('auth/me', [AuthController::class, 'me']);
+        Route::put('auth/change-password', [AuthController::class, 'changePassword']);
 
         /*
         | Admin only — user management
@@ -63,6 +64,8 @@ Route::prefix('v1')->group(function () {
             Route::put('admin/products/{product}', [ProductController::class, 'update']);
             Route::delete('admin/products/{product}', [ProductController::class, 'destroy']);
             Route::post('admin/products/{product}/adjust-stock', [ProductController::class, 'adjustStock']);
+            Route::post('admin/products/{product}/image', [ProductController::class, 'uploadImage']);
+            Route::delete('admin/products/{product}/image', [ProductController::class, 'removeImage']);
             Route::get('admin/stock-movements', [StockMovementController::class, 'index']);
 
             Route::get('admin/categories', [CategoryController::class, 'adminIndex']);

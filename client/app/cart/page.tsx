@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2, ShoppingCart, ArrowRight } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { Button } from "@/components/ui";
+import { resolveImageUrl } from "@/utils/image";
 
 export default function CartPage() {
   const { cart, removeFromCart, clearCart, count } = useCartStore();
@@ -43,16 +44,16 @@ export default function CartPage() {
               className="flex items-center gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4"
             >
               <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-2xl shrink-0">
-                {item.image_url ? (
+                {resolveImageUrl(item.image_url) ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.image_url} alt="" className="w-full h-full object-cover rounded-xl" />
+                  <img src={resolveImageUrl(item.image_url)!} alt="" className="w-full h-full object-cover rounded-xl" />
                 ) : (
                   "📦"
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <Link
-                  href={`/products/${item.id}`}
+                  href={item.slug ? `/products/${item.slug}` : "/products"}
                   className="font-bold text-slate-900 dark:text-white hover:text-blue-600 truncate block"
                 >
                   {item.name}

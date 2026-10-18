@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, PackageSearch } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Pencil, Trash2, PackageSearch, Layers, ImageUp, X } from "lucide-react";
 import { api, getAuthHeaders, type Paginated } from "@/utils/api";
+import { resolveImageUrl } from "@/utils/image";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
   Button, DataTable, Modal, Input, Select, Badge, TableSkeleton,
@@ -17,6 +18,7 @@ interface Product {
   min_stock: number;
   price: string;
   cost: string;
+  image_url: string | null;
   is_active: boolean;
   category: { id: number; name: string } | null;
 }
@@ -47,6 +49,14 @@ export default function DashboardProductsPage() {
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [total, setTotal] = useState(0);
+
+  const [stockModal, setStockModal] = useState<Product | null>(null);
+  const [stockQty, setStockQty] = useState("");
+  const [stockReason, setStockReason] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
+
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -137,6 +147,67 @@ export default function DashboardProductsPage() {
     setRefreshKey((k) => k + 1);
   };
 
+  const handleAdjustStock = async () => {
+    if (!stockModal || !stockQty || Number(stockQty) === 0 || !stockReason) return;
+    setAdjusting(true);
+    const res = await api(`admin/products/${stockModal.id}/adjust-stock`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ quantity: Number(stockQty), reason: stockReason }),
+    });
+    setAdjusting(false);
+    if (res.error) {
+      toast.error(res.message);
+      return;
+    }
+    toast.success("Stock ajustado");
+    setStockModal(null);
+    setStockQty("");
+    setStockReason("");
+    setRefreshKey((k) => k + 1);
+  };
+
+  const handleUploadImage = async (file: File) => {
+    if (!editing) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("La imagen no puede superar 2 MB");
+      return;
+    }
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("image", file);
+    const res = await api<Product>(`admin/products/${editing.id}/image`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: formData,
+    });
+    setUploading(false);
+    if (res.error) {
+      toast.error(res.message);
+      return;
+    }
+    setEditing({ ...editing, image_url: res.data.image_url });
+    toast.success("Imagen subida");
+    setRefreshKey((k) => k + 1);
+  };
+
+  const handleRemoveImage = async () => {
+    if (!editing) return;
+    setUploading(true);
+    const res = await api(`admin/products/${editing.id}/image`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    setUploading(false);
+    if (res.error) {
+      toast.error(res.message);
+      return;
+    }
+    setEditing({ ...editing, image_url: null });
+    toast.success("Imagen eliminada");
+    setRefreshKey((k) => k + 1);
+  };
+
   if (!token) return null;
 
   const lowStock = products.filter((p) => p.stock <= p.min_stock).length;
@@ -186,6 +257,13 @@ export default function DashboardProductsPage() {
             )},
             { key: "actions", header: "", render: (r) => (
               <div className="flex gap-1">
+                <button
+                  onClick={() => { setStockModal(r); setStockQty(""); setStockReason(""); }}
+                  title="Ajustar stock"
+                  className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                >
+                  <Layers size={15} />
+                </button>
                 <button onClick={() => openEdit(r)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"><Pencil size={15} /></button>
                 <button onClick={() => handleDelete(r)} className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 size={15} /></button>
               </div>
@@ -216,9 +294,85 @@ export default function DashboardProductsPage() {
             )}
             <Input label="Stock mínimo" type="number" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} />
           </div>
+
+          {/* Imagen (solo al editar: el producto debe existir primero) */}
+          {editing && (
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2">Imagen</p>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-xl bg-slate-100 dark:bg-slate-800 overflow-hidden flex items-center justify-center shrink-0">
+                  {resolveImageUrl(editing.image_url) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={resolveImageUrl(editing.image_url)!} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageUp size={24} className="text-slate-400" />
+                  )}
+                </div>
+                <div className="flex flex-col gap-2 text-sm">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadImage(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button size="sm" variant="secondary" loading={uploading} onClick={() => fileInputRef.current?.click()}>
+                    <ImageUp size={14} /> {editing.image_url ? "Cambiar imagen" : "Subir imagen"}
+                  </Button>
+                  {editing.image_url && (
+                    <Button size="sm" variant="ghost" loading={uploading} onClick={handleRemoveImage}>
+                      <X size={14} /> Quitar imagen
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 mt-2">JPG, PNG, WebP o AVIF · máximo 2 MB</p>
+            </div>
+          )}
+
           <div className="flex gap-3 pt-4">
             <Button variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>Cancelar</Button>
             <Button className="flex-1" loading={saving} onClick={handleSave}>{editing ? "Guardar" : "Crear"}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Stock adjust modal */}
+      <Modal open={!!stockModal} onClose={() => setStockModal(null)} title={`Ajustar stock — ${stockModal?.name}`}>
+        <div className="space-y-4">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm">
+            Stock actual: <span className="font-black">{stockModal?.stock}</span> unidades
+            <span className="text-slate-400 ml-2">(mínimo {stockModal?.min_stock})</span>
+          </div>
+          <Input
+            label="Cantidad (positiva = entrada, negativa = salida)"
+            type="number"
+            value={stockQty}
+            onChange={(e) => setStockQty(e.target.value)}
+            placeholder="ej. 10 o -5"
+            required
+          />
+          <Input
+            label="Motivo"
+            value={stockReason}
+            onChange={(e) => setStockReason(e.target.value)}
+            placeholder="ej. Conteo físico, daño, reposición..."
+            required
+          />
+          <div className="flex gap-3 pt-2">
+            <Button variant="secondary" className="flex-1" onClick={() => setStockModal(null)}>Cancelar</Button>
+            <Button
+              className="flex-1"
+              loading={adjusting}
+              disabled={!stockQty || Number(stockQty) === 0 || !stockReason}
+              onClick={handleAdjustStock}
+            >
+              Ajustar
+            </Button>
           </div>
         </div>
       </Modal>

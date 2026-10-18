@@ -5,7 +5,7 @@ import { Eye, DollarSign, TrendingUp, ShoppingCart } from "lucide-react";
 import { api, getAuthHeaders, type Paginated } from "@/utils/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
-  DataTable, Modal, StatusBadge, TableSkeleton, StatCard,
+  DataTable, Modal, StatusBadge, TableSkeleton, StatCard, Select, Input,
 } from "@/components/ui";
 
 interface SaleDetail {
@@ -46,25 +46,46 @@ export default function DashboardSalesPage() {
   const [lastPage, setLastPage] = useState(1);
   const [total, setTotal] = useState(0);
 
+  const [payment, setPayment] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [search, setSearch] = useState("");
+
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
-    const headers = getAuthHeaders();
-    Promise.all([
-      api<Paginated<Sale>>(`sales?page=${page}`, { headers }),
-      api<Summary>("sales/summary", { headers }),
-    ]).then(([salesRes, summaryRes]) => {
+    api<Summary>("sales/summary", { headers: getAuthHeaders() }).then((summaryRes) => {
+      if (cancelled) return;
+      if (!summaryRes.error) setSummary(summaryRes.data);
+    });
+    return () => { cancelled = true; };
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    if (payment) params.set("payment_method", payment);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (search) params.set("search", search);
+    api<Paginated<Sale>>(`sales?${params}`, { headers: getAuthHeaders() }).then((salesRes) => {
       if (cancelled) return;
       if (!salesRes.error) {
         setSales(salesRes.data.data);
         setLastPage(salesRes.data.last_page);
         setTotal(salesRes.data.total);
       }
-      if (!summaryRes.error) setSummary(summaryRes.data);
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [token, page]);
+  }, [token, page, payment, from, to, search]);
+
+  const resetPage = (fn: () => void) => {
+    setPage(1);
+    fn();
+  };
 
   if (!token) return null;
 
@@ -83,6 +104,29 @@ export default function DashboardSalesPage() {
           <StatCard label="Total ventas" value={summary.total_sales} accent="slate" />
         </div>
       )}
+
+      {/* Filters */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Select
+          label="Método de pago"
+          value={payment}
+          onChange={(e) => resetPage(() => setPayment(e.target.value))}
+          options={[
+            { value: "", label: "Todos" },
+            { value: "cash", label: "Efectivo" },
+            { value: "card", label: "Tarjeta" },
+            { value: "transfer", label: "Transferencia" },
+          ]}
+        />
+        <Input label="Desde" type="date" value={from} onChange={(e) => resetPage(() => setFrom(e.target.value))} />
+        <Input label="Hasta" type="date" value={to} onChange={(e) => resetPage(() => setTo(e.target.value))} />
+        <Input
+          label="Buscar"
+          value={search}
+          onChange={(e) => resetPage(() => setSearch(e.target.value))}
+          placeholder="Factura o cliente..."
+        />
+      </div>
 
       {loading ? (
         <TableSkeleton rows={8} cols={6} />

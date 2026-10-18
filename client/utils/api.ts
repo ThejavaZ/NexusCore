@@ -24,8 +24,9 @@ export async function api<T = unknown>(
     Accept: "application/json",
   };
 
-  // Content-Type solo con body: en GET fuerza un preflight CORS innecesario
-  if (options.body) {
+  // Content-Type solo con body JSON: FormData lleva su propio boundary
+  // y un GET con Content-Type fuerza un preflight CORS innecesario
+  if (options.body && !(options.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
 

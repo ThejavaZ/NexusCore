@@ -93,3 +93,61 @@ test('auth/me retorna el usuario autenticado', function () {
 
     $response->assertOk()->assertJsonPath('user.email', $user->email);
 });
+
+test('cambio de contraseña requiere autenticación', function () {
+    $this->putJson('/api/v1/auth/change-password', [
+        'current_password' => 'Str0ng!Pass',
+        'password' => 'Nueva!Pass123',
+        'password_confirmation' => 'Nueva!Pass123',
+    ])->assertUnauthorized();
+});
+
+test('cambio de contraseña actualiza el password', function () {
+    $user = User::factory()->create(['password' => Hash::make('Str0ng!Pass')]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->putJson('/api/v1/auth/change-password', [
+            'current_password' => 'Str0ng!Pass',
+            'password' => 'Nueva!Pass123',
+            'password_confirmation' => 'Nueva!Pass123',
+        ]);
+
+    $response->assertOk()->assertJsonPath('success', true);
+    $this->assertTrue(Hash::check('Nueva!Pass123', $user->fresh()->password));
+});
+
+test('cambio de contraseña rechaza contraseña actual incorrecta', function () {
+    $user = User::factory()->create(['password' => Hash::make('Str0ng!Pass')]);
+
+    $response = $this->actingAs($user, 'sanctum')
+        ->putJson('/api/v1/auth/change-password', [
+            'current_password' => 'wrong-password',
+            'password' => 'Nueva!Pass123',
+            'password_confirmation' => 'Nueva!Pass123',
+        ]);
+
+    $response->assertStatus(422)->assertJsonPath('message', 'La contraseña actual es incorrecta');
+    $this->assertTrue(Hash::check('Str0ng!Pass', $user->fresh()->password));
+});
+
+test('cambio de contraseña valida fuerza y confirmación', function () {
+    $user = User::factory()->create(['password' => Hash::make('Str0ng!Pass')]);
+
+    $this->actingAs($user, 'sanctum')
+        ->putJson('/api/v1/auth/change-password', [
+            'current_password' => 'Str0ng!Pass',
+            'password' => '123',
+            'password_confirmation' => '123',
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('password');
+
+    $this->actingAs($user, 'sanctum')
+        ->putJson('/api/v1/auth/change-password', [
+            'current_password' => 'Str0ng!Pass',
+            'password' => 'Nueva!Pass123',
+            'password_confirmation' => 'distinta',
+        ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('password');
+});

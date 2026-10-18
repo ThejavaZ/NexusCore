@@ -129,11 +129,14 @@ Base URL: `http://localhost:8000/api/v1`
 |--------|----------|-------------|
 | GET | `/auth/me` | Usuario actual |
 | POST | `/auth/logout` | Revocar token |
+| PUT | `/auth/change-password` | Cambiar contraseña |
 | GET | `/admin/products` | Listado completo (con inactivos) |
 | POST | `/admin/products` | Crear producto |
 | PUT | `/admin/products/{id}` | Actualizar producto |
 | DELETE | `/admin/products/{id}` | Desactivar producto |
 | POST | `/admin/products/{id}/adjust-stock` | Ajuste manual de stock |
+| POST | `/admin/products/{id}/image` | Subir imagen (JPG/PNG/WebP/AVIF, 2 MB) |
+| DELETE | `/admin/products/{id}/image` | Quitar imagen |
 | GET | `/admin/stock-movements` | Historial de movimientos de stock |
 | GET | `/admin/categories` | Listado de categorías (con conteo) |
 | POST | `/admin/categories` | Crear categoría |

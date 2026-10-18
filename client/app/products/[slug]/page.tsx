@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ShoppingCart, Package } from "lucide-react";
 import { api } from "@/utils/api";
+import { resolveImageUrl } from "@/utils/image";
 import { useCartStore } from "@/store/useCartStore";
 import { Badge, Button, Skeleton } from "@/components/ui";
 
@@ -83,9 +84,9 @@ export default function ProductDetailPage() {
       <div className="grid md:grid-cols-2 gap-10">
         {/* Image */}
         <div className="aspect-square rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-          {product.image_url ? (
+          {resolveImageUrl(product.image_url) ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+            <img src={resolveImageUrl(product.image_url)!} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <Package size={80} className="text-slate-300" />
           )}
@@ -128,8 +129,7 @@ export default function ProductDetailPage() {
             onClick={() => {
               addToCart(product);
               router.push("/cart");
-            }}
-          >
+            }}          >
             <ShoppingCart size={20} />
             {product.stock === 0 ? "Sin stock" : "Agregar al carrito"}
           </Button>

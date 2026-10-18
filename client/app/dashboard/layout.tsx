@@ -11,6 +11,7 @@ import {
   Boxes,
   Users,
   FolderTree,
+  UserCircle,
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { label: "Reparaciones", href: "/dashboard/repairs", icon: Wrench },
   { label: "Productos", href: "/dashboard/products", icon: Package },
   { label: "Stock", href: "/dashboard/stock", icon: Boxes },
+  { label: "Mi perfil", href: "/dashboard/profile", icon: UserCircle },
 ];
 
 const ADMIN_ONLY = [

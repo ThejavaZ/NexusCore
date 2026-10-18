@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useCartStore } from "@/store/useCartStore";
 import { api } from "@/utils/api";
+import { resolveImageUrl } from "@/utils/image";
 
 interface Product {
   id: number;
+  slug?: string;
   name: string;
   price: string;
   stock: number;
@@ -126,10 +128,10 @@ export default function ProductsPage() {
                   </span>
                 )}
 
-                <div className="aspect-square bg-slate-50 flex items-center justify-center text-6xl">
-                  {product.image_url ? (
+                <div className="aspect-square bg-slate-50 flex items-center justify-center text-6xl overflow-hidden">
+                  {resolveImageUrl(product.image_url) ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={product.image_url} alt={product.name} />
+                    <img src={resolveImageUrl(product.image_url)!} alt={product.name} className="w-full h-full object-cover" />
                   ) : (
                     "📦"
                   )}

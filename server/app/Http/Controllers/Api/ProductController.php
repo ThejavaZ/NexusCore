@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\StockMovement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
@@ -214,5 +215,52 @@ class ProductController extends Controller
             'message' => 'Stock ajustado exitosamente',
             'data' => $product->fresh(),
         ]);
+    }
+
+    /**
+     * Upload product image (admin/staff) — stored on public disk.
+     */
+    public function uploadImage(Request $request, Product $product): JsonResponse
+    {
+        $data = $request->validate([
+            'image' => 'required|file|image|mimes:jpeg,jpg,png,webp,avif|max:2048',
+        ]);
+
+        $path = $data['image']->store('products', 'public');
+
+        if ($this->isLocalImagePath($product->image_url)) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $product->image_url));
+        }
+
+        $product->update(['image_url' => '/storage/'.$path]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Imagen subida exitosamente',
+            'data' => $product->fresh(),
+        ]);
+    }
+
+    /**
+     * Remove product image (admin/staff).
+     */
+    public function removeImage(Product $product): JsonResponse
+    {
+        if ($this->isLocalImagePath($product->image_url)) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $product->image_url));
+        }
+
+        $product->update(['image_url' => null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Imagen eliminada exitosamente',
+            'data' => $product->fresh(),
+        ]);
+    }
+
+    private function isLocalImagePath(?string $url): bool
+    {
+        return $url !== null && str_starts_with($url, '/storage/');
     }
 }
