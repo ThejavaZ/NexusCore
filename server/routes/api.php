@@ -55,6 +55,12 @@ Route::prefix('v1')->group(function () {
         Route::put('auth/change-password', [AuthController::class, 'changePassword']);
 
         /*
+        | Authenticated customer — pedidos propios
+        */
+        Route::get('orders/mine', [SaleController::class, 'mine']);
+        Route::get('orders/mine/{sale}', [SaleController::class, 'mineShow']);
+
+        /*
         | Admin only — user management
         */
         Route::middleware('role:admin')->group(function () {

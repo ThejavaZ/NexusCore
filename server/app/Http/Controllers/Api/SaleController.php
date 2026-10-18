@@ -73,6 +73,45 @@ class SaleController extends Controller
         ]);
     }
 
+    /**
+     * Authenticated — pedidos propios (creados por el usuario o con su email).
+     */
+    public function mine(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $sales = Sale::with('details')
+            ->where(fn ($q) => $q
+                ->where('created_by', $user->id)
+                ->orWhere('customer_email', $user->email))
+            ->latest('sale_date')
+            ->paginate($request->integer('per_page', 10));
+
+        return response()->json([
+            'success' => true,
+            'data' => $sales,
+        ]);
+    }
+
+    /**
+     * Authenticated — detalle de un pedido propio.
+     */
+    public function mineShow(Request $request, Sale $sale): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $sale->created_by === $user->id
+                || ($sale->customer_email !== null && $sale->customer_email === $user->email),
+            404
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $sale->load('details'),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

@@ -53,6 +53,14 @@ export default function Header() {
             >
               Nosotros
             </Link>
+            {user && (
+              <Link
+                href="/orders"
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+                Mis pedidos
+              </Link>
+            )}
             {isStaff && (
               <Link
                 href="/dashboard"
@@ -154,6 +162,15 @@ export default function Header() {
           >
             Nosotros
           </Link>
+          {user && (
+            <Link
+              href="/orders"
+              onClick={toggleMenu}
+              className="block px-3 py-3 rounded-md font-medium text-gray-700"
+            >
+              Mis pedidos
+            </Link>
+          )}
           {isStaff && (
             <Link
               href="/dashboard"

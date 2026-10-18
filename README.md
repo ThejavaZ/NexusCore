@@ -127,6 +127,13 @@ Base URL: `http://localhost:8000/api/v1`
 | POST | `/payments/fake/confirm` | Confirmar pago simulado (solo `PAYMENT_DRIVER=fake`) |
 | POST | `/stripe/webhook` | Webhook de Stripe (firma verificada) |
 
+### Autenticados (cualquier usuario)
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/orders/mine` | Pedidos propios (creados o con tu email) |
+| GET | `/orders/mine/{id}` | Detalle de pedido propio |
+
 ### Autenticados (Staff + Admin)
 
 | Método | Endpoint | Descripción |
