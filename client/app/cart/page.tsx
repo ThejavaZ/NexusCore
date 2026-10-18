@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Trash2, ShoppingCart, ArrowRight } from "lucide-react";
+import { Trash2, ShoppingCart, ArrowRight, Minus, Plus } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { Button } from "@/components/ui";
 import { resolveImageUrl } from "@/utils/image";
 
 export default function CartPage() {
-  const { cart, removeFromCart, clearCart, count } = useCartStore();
+  const { cart, removeFromCart, updateQuantity, clearCart, count } = useCartStore();
   const router = useRouter();
 
-  const total = cart.reduce((sum, item) => sum + parseFloat(String(item.price)), 0);
+  const total = cart.reduce(
+    (sum, item) => sum + parseFloat(String(item.price)) * item.quantity,
+    0,
+  );
   const tax = total * 0.16;
   const grandTotal = total + tax;
 
@@ -38,36 +41,69 @@ export default function CartPage() {
       <div className="grid md:grid-cols-3 gap-8">
         {/* Items */}
         <div className="md:col-span-2 space-y-4">
-          {cart.map((item, i) => (
-            <div
-              key={`${item.id}-${i}`}
-              className="flex items-center gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4"
-            >
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-2xl shrink-0">
-                {resolveImageUrl(item.image_url) ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={resolveImageUrl(item.image_url)!} alt="" className="w-full h-full object-cover rounded-xl" />
-                ) : (
-                  "📦"
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <Link
-                  href={item.slug ? `/products/${item.slug}` : "/products"}
-                  className="font-bold text-slate-900 dark:text-white hover:text-blue-600 truncate block"
-                >
-                  {item.name}
-                </Link>
-                <p className="text-sm text-slate-500">${parseFloat(String(item.price)).toLocaleString()}</p>
-              </div>
-              <button
-                onClick={() => removeFromCart(item.id)}
-                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+          {cart.map((item) => {
+            const lineTotal = parseFloat(String(item.price)) * item.quantity;
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4"
               >
-                <Trash2 size={18} />
-              </button>
-            </div>
-          ))}
+                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-2xl shrink-0 overflow-hidden">
+                  {resolveImageUrl(item.image_url) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={resolveImageUrl(item.image_url)!} alt="" className="w-full h-full object-cover rounded-xl" />
+                  ) : (
+                    "📦"
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <Link
+                    href={item.slug ? `/products/${item.slug}` : "/products"}
+                    className="font-bold text-slate-900 dark:text-white hover:text-blue-600 truncate block"
+                  >
+                    {item.name}
+                  </Link>
+                  <p className="text-sm text-slate-500">
+                    ${parseFloat(String(item.price)).toLocaleString()} c/u
+                  </p>
+                </div>
+
+                {/* Quantity controls */}
+                <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden shrink-0">
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-40"
+                    disabled={item.quantity <= 1}
+                    aria-label="Reducir cantidad"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="w-9 text-center text-sm font-bold tabular-nums">{item.quantity}</span>
+                  <button
+                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    className="p-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition disabled:opacity-40"
+                    disabled={item.quantity >= item.stock}
+                    aria-label="Aumentar cantidad"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+
+                <span className="font-black text-slate-900 dark:text-white w-24 text-right shrink-0">
+                  ${lineTotal.toLocaleString()}
+                </span>
+
+                <button
+                  onClick={() => removeFromCart(item.id)}
+                  className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition shrink-0"
+                  aria-label="Eliminar producto"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {/* Summary */}
@@ -76,7 +112,7 @@ export default function CartPage() {
             <h2 className="font-bold mb-4">Resumen</h2>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-500">Subtotal ({count} items)</span>
+                <span className="text-slate-500">Subtotal ({count} unidades)</span>
                 <span className="font-medium">${total.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">

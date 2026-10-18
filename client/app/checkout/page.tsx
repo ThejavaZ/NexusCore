@@ -36,7 +36,10 @@ export default function CheckoutPage() {
     }));
   }
 
-  const total = cart.reduce((sum, item) => sum + parseFloat(String(item.price)), 0);
+  const total = cart.reduce(
+    (sum, item) => sum + parseFloat(String(item.price)) * item.quantity,
+    0,
+  );
   const tax = total * 0.16;
   const grandTotal = total + tax;
 
@@ -80,7 +83,7 @@ export default function CheckoutPage() {
         ...form,
         items: cart.map((item) => ({
           product_id: item.id,
-          quantity: 1,
+          quantity: item.quantity,
         })),
       }),
     });
@@ -161,12 +164,17 @@ export default function CheckoutPage() {
         {/* Summary */}
         <div>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sticky top-24">
-            <h2 className="font-bold mb-4">Tu pedido ({count} items)</h2>
+            <h2 className="font-bold mb-4">Tu pedido ({count} unidades)</h2>
             <div className="space-y-2 text-sm mb-4">
-              {cart.map((item, i) => (
-                <div key={i} className="flex justify-between">
-                  <span className="text-slate-500 truncate mr-2">{item.name}</span>
-                  <span className="font-medium shrink-0">${parseFloat(String(item.price)).toLocaleString()}</span>
+              {cart.map((item) => (
+                <div key={item.id} className="flex justify-between gap-2">
+                  <span className="text-slate-500 truncate">
+                    {item.name}
+                    <span className="text-slate-400 ml-1">× {item.quantity}</span>
+                  </span>
+                  <span className="font-medium shrink-0">
+                    ${(parseFloat(String(item.price)) * item.quantity).toLocaleString()}
+                  </span>
                 </div>
               ))}
             </div>
