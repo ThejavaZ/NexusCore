@@ -1,49 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import {
-  CreditCard, CheckCircle2, FileText, Download,
-} from "lucide-react";
+import { CreditCard, CheckCircle2, Download, XCircle } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api, getAuthHeaders } from "@/utils/api";
 import { useMounted } from "@/hooks/useMounted";
 import { Button, Input, Select } from "@/components/ui";
+import { OrderInvoice, type Order } from "@/components/OrderInvoice";
 
-interface OrderDetail {
-  id: number;
-  product_name: string;
-  unit_price: string;
-  quantity: number;
-  total_price: string;
-}
-
-interface Order {
-  id: number;
-  invoice_number: string;
-  sale_date: string;
-  customer_name: string;
-  customer_email: string | null;
-  subtotal: string;
-  tax_amount: string;
-  total_amount: string;
-  payment_method: string;
-  details: OrderDetail[];
-}
-
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: "Efectivo",
-  card: "Tarjeta",
-  transfer: "Transferencia",
-};
-
-export default function CheckoutPage() {
+function CheckoutView() {
   const { cart, clearCart, count } = useCartStore();
   const { user, token } = useAuthStore();
   const router = useRouter();
   const mounted = useMounted();
+  const cancelled = useSearchParams().get("cancelled") === "1";
   const [loading, setLoading] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +51,6 @@ export default function CheckoutPage() {
   if (order) {
     return (
       <div className="max-w-2xl mx-auto">
-        {/* Success header */}
         <div className="text-center mb-8">
           <CheckCircle2 size={64} className="mx-auto text-emerald-500 mb-4" />
           <h1 className="text-3xl font-black text-slate-900 dark:text-white">
@@ -89,88 +61,19 @@ export default function CheckoutPage() {
           </p>
         </div>
 
-        {/* Invoice */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
-          <div className="bg-slate-900 dark:bg-slate-800 text-white px-8 py-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText size={22} className="text-blue-400" />
-              <div>
-                <p className="text-xs text-slate-400 uppercase font-bold">Factura</p>
-                <p className="text-xl font-black">{order.invoice_number}</p>
-              </div>
-            </div>
-            <div className="text-right text-sm">
-              <p className="text-slate-400">Fecha</p>
-              <p className="font-bold">{new Date(order.sale_date).toLocaleString("es-MX")}</p>
-            </div>
-          </div>
-
-          <div className="p-8 space-y-6">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs uppercase font-bold text-slate-400">Cliente</p>
-                <p className="font-medium text-slate-800 dark:text-slate-200">{order.customer_name}</p>
-                {order.customer_email && (
-                  <p className="text-slate-500">{order.customer_email}</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs uppercase font-bold text-slate-400">Método de pago</p>
-                <p className="font-medium text-slate-800 dark:text-slate-200">
-                  {PAYMENT_LABELS[order.payment_method] ?? order.payment_method}
-                </p>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
-              <p className="text-xs uppercase font-bold text-slate-400 mb-3">Productos</p>
-              <div className="space-y-2">
-                {order.details.map((d) => (
-                  <div
-                    key={d.id}
-                    className="flex justify-between text-sm py-2 border-b border-slate-50 dark:border-slate-800 last:border-0"
-                  >
-                    <span className="text-slate-700 dark:text-slate-300">
-                      {d.product_name}{" "}
-                      <span className="text-slate-400">
-                        × {d.quantity} @ ${parseFloat(d.unit_price).toLocaleString()}
-                      </span>
-                    </span>
-                    <span className="font-medium text-slate-900 dark:text-white">
-                      ${parseFloat(d.total_price).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Subtotal</span>
-                <span>${parseFloat(order.subtotal).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">IVA (16%)</span>
-                <span>${parseFloat(order.tax_amount).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-xl font-black pt-2">
-                <span>Total</span>
-                <span className="text-blue-600">
-                  ${parseFloat(order.total_amount).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          <Button variant="secondary" className="flex-1" onClick={() => window.print()}>
-            <Download size={16} /> Imprimir factura
-          </Button>
-          <Button className="flex-1" onClick={() => router.push("/products")}>
-            Seguir comprando
-          </Button>
-        </div>
+        <OrderInvoice
+          order={order}
+          actions={
+            <>
+              <Button variant="secondary" className="flex-1" onClick={() => window.print()}>
+                <Download size={16} /> Imprimir factura
+              </Button>
+              <Button className="flex-1" onClick={() => router.push("/products")}>
+                Seguir comprando
+              </Button>
+            </>
+          }
+        />
       </div>
     );
   }
@@ -210,6 +113,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (res.data.payment_url) {
+      window.location.href = res.data.payment_url;
+      return;
+    }
+
     clearCart();
     setOrder(res.data);
     setLoading(false);
@@ -229,6 +137,13 @@ export default function CheckoutPage() {
           </p>
         )}
       </div>
+
+      {cancelled && (
+        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 text-amber-700 dark:text-amber-400 text-sm font-medium rounded-r-xl flex items-center gap-2">
+          <XCircle size={16} className="shrink-0" />
+          El pago fue cancelado — tu pedido sigue pendiente, puedes volver a intentarlo.
+        </div>
+      )}
 
       <div className="grid md:grid-cols-3 gap-8">
         {/* Form */}
@@ -269,8 +184,8 @@ export default function CheckoutPage() {
                 value={form.payment_method}
                 onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
                 options={[
-                  { value: "cash", label: "Efectivo" },
-                  { value: "card", label: "Tarjeta" },
+                  { value: "cash", label: "Efectivo (al recibir)" },
+                  { value: "card", label: "Tarjeta (Stripe)" },
                   { value: "transfer", label: "Transferencia" },
                 ]}
               />
@@ -328,5 +243,13 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={null}>
+      <CheckoutView />
+    </Suspense>
   );
 }

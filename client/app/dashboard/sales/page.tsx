@@ -26,6 +26,7 @@ interface Sale {
   tax_amount: string;
   total_amount: string;
   payment_method: string;
+  status: string;
   details: SaleDetail[];
 }
 
@@ -141,6 +142,7 @@ export default function DashboardSalesPage() {
             { key: "sale_date", header: "Fecha", render: (r) => new Date(r.sale_date).toLocaleDateString("es-MX") },
             { key: "customer_name", header: "Cliente" },
             { key: "payment_method", header: "Pago", render: (r) => <StatusBadge status={r.payment_method} /> },
+            { key: "status", header: "Estado", render: (r) => <StatusBadge status={r.status} /> },
             { key: "total_amount", header: "Total", render: (r) => <span className="font-bold">${parseFloat(r.total_amount).toLocaleString()}</span> },
             { key: "view", header: "", render: () => <Eye size={16} className="text-slate-400" /> },
           ]}

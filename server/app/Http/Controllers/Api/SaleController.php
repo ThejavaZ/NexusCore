@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\PaymentMethod;
+use App\Enums\SaleStatus;
 use App\Enums\StockMovementType;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\StockMovement;
+use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +51,21 @@ class SaleController extends Controller
     public function show(Sale $sale): JsonResponse
     {
         $sale->load('details');
+
+        return response()->json([
+            'success' => true,
+            'data' => $sale,
+        ]);
+    }
+
+    /**
+     * Public — consulta de pedido por session_id de pago (enlace de éxito).
+     */
+    public function bySession(string $sessionId): JsonResponse
+    {
+        $sale = Sale::where('stripe_session_id', $sessionId)
+            ->with('details')
+            ->firstOrFail();
 
         return response()->json([
             'success' => true,
@@ -98,6 +115,9 @@ class SaleController extends Controller
                     'tax_amount' => $taxAmount,
                     'total_amount' => $totalAmount,
                     'payment_method' => PaymentMethod::from($data['payment_method']),
+                    'status' => $data['payment_method'] === 'card'
+                        ? SaleStatus::PendingPayment
+                        : SaleStatus::Paid,
                     'created_by' => auth()->id(),
                 ]);
 
@@ -130,10 +150,31 @@ class SaleController extends Controller
                 return $sale;
             });
 
+            $sale->load('details');
+            $paymentUrl = null;
+
+            if ($sale->payment_method === PaymentMethod::Card) {
+                try {
+                    $session = app(PaymentService::class)->createCheckoutSession($sale);
+                    $sale->update(['stripe_session_id' => $session['session_id']]);
+                    $paymentUrl = $session['payment_url'];
+                } catch (\RuntimeException $e) {
+                    $sale->cancelAndRestore();
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => $e->getMessage(),
+                    ], 422);
+                }
+            }
+
+            $payload = $sale->toArray();
+            $payload['payment_url'] = $paymentUrl;
+
             return response()->json([
                 'success' => true,
                 'message' => 'Venta registrada exitosamente',
-                'data' => $sale->load('details'),
+                'data' => $payload,
             ], 201);
         } catch (\RuntimeException $e) {
             return response()->json([

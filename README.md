@@ -119,9 +119,13 @@ Base URL: `http://localhost:8000/api/v1`
 |--------|----------|-------------|
 | POST | `/auth/login` | Login → Bearer token |
 | POST | `/auth/register` | Registro de cliente |
-| GET | `/products` | Catálogo (paginado, búsqueda, filtro categoría) |
+| GET | `/products` | Catálogo (paginado, búsqueda, categoría, precio mín/máx, orden) |
 | GET | `/products/{slug}` | Detalle de producto |
 | GET | `/categories` | Categorías activas |
+| POST | `/orders` | Checkout como invitado (throttle 10/min) |
+| GET | `/orders/by-session/{session_id}` | Consulta pública de pedido por sesión de pago |
+| POST | `/payments/fake/confirm` | Confirmar pago simulado (solo `PAYMENT_DRIVER=fake`) |
+| POST | `/stripe/webhook` | Webhook de Stripe (firma verificada) |
 
 ### Autenticados (Staff + Admin)
 
@@ -219,11 +223,14 @@ npm run build                 # Next.js build
 - [x] Sprint 06 — Frontend rebranding + dashboard
 - [x] Sprint 07 — Suite de tests completa
 - [x] Sprint 08 — CI/CD pipeline
-- [ ] Sprint 09 — Pulido portfolio *(en curso)*
-- [ ] Dashboard: gráfico de ventas (recharts)
-- [ ] CRUD de productos desde el dashboard
-- [ ] Gestión de reparaciones con cambio de estado
-- [ ] Checkout end-to-end
+- [x] Sprint 09 — Pulido portfolio (UI kit, dark mode, dashboard, storefront)
+- [ ] Sprint 10 — Experiencia de compra completa *(en curso)*
+  - [x] Checkout como invitado con facturación (cantidades, IVA)
+  - [x] Pagos online (Stripe modo test o simulación local)
+  - [ ] SEO técnico (metadata, JSON-LD, sitemap)
+  - [ ] Mis pedidos, cupones, favoritos y reseñas
+  - [ ] Facturas PDF, exportes CSV y métricas avanzadas
+  - [ ] E2E con Playwright y despliegue
 
 ---
 

@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\FakePaymentController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\RepairController;
 use App\Http\Controllers\Api\SaleController;
 use App\Http\Controllers\Api\StockMovementController;
+use App\Http\Controllers\Api\StripeWebhookController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +41,9 @@ Route::prefix('v1')->group(function () {
     | Public: storefront checkout (guest or authenticated)
     */
     Route::post('orders', [SaleController::class, 'store'])->middleware('throttle:10,1');
+    Route::get('orders/by-session/{sessionId}', [SaleController::class, 'bySession']);
+    Route::post('payments/fake/confirm', [FakePaymentController::class, 'confirm'])->middleware('throttle:10,1');
+    Route::post('stripe/webhook', [StripeWebhookController::class, 'handle']);
 
     /*
     | Protected: authenticated via Sanctum Bearer token
